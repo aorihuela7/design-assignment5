@@ -59,6 +59,42 @@ flowchart TD
   main ~~~ back
 ```
 
+## Live board data flow
+
+From adsb.fi to the Live board, through a worker on Supabase. Details: [docs/data-flow.md](docs/data-flow.md).
+
+```mermaid
+flowchart LR
+  subgraph External
+    ADSB["adsb.fi open data<br/>/v3/lat/lon/dist, 1 req/s, no key"]
+    CLERK["Clerk<br/>sign-in, session token"]
+  end
+  subgraph Supabase
+    CRON["Supabase Cron (pg_cron)<br/>every minute, pg_net POST + WORKER_SECRET"]
+    WORKER["Worker: Edge Function (Deno)<br/>secret key provided by Supabase"]
+    FOLLOWS[("follows<br/>user_id, airport_code<br/>RLS: own rows only")]
+    AIRCRAFT[("aircraft<br/>one row per aircraft per airport<br/>RLS: any signed-in person reads")]
+    UPDATES[("airport_updates<br/>one row per airport: checked_at, ok, counts<br/>RLS: any signed-in person reads")]
+    RUNS[("worker_runs<br/>one row per run, 7 days<br/>worker only")]
+    RT["Realtime<br/>publication: airport_updates only"]
+  end
+  subgraph Vercel
+    PAGE["Live board page<br/>Next.js, in the browser"]
+  end
+
+  CRON -->|"1. calls"| WORKER
+  WORKER -->|"2. reads followed airports"| FOLLOWS
+  WORKER -->|"3. GET, one airport at a time, 1.1 s apart"| ADSB
+  WORKER -->|"4. writes only aircraft that changed enough, deletes gone ones"| AIRCRAFT
+  WORKER -->|"5. one row per airport fetched"| UPDATES
+  WORKER -->|"6. one row per run"| RUNS
+  UPDATES -->|"7. change"| RT
+  RT -->|"8. one message per followed airport per run"| PAGE
+  PAGE -->|"9. refetch when changed > 0"| AIRCRAFT
+  PAGE -->|"follow / unfollow"| FOLLOWS
+  CLERK -->|"session token on every request and on Realtime"| PAGE
+```
+
 ## Run it locally
 
 You need Node.js 20.9 or newer, a Clerk application and a Supabase project, both on free plans.
