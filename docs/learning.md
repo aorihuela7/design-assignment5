@@ -476,3 +476,111 @@ My professor's feedback on Assignment 4, fixed on the `assignment-5` branch befo
 
 - **The board's caption wasn't enough.** "Next 7 days" was there all along, but as the board's caption, and nothing joined it to the suggestions below. A sentence where the suggestions start says what they're based on, and what to do to change it.
 - **A hint should be a way forward.** Telling someone to add dates is more useful when the words themselves open the form.
+
+## Assignment 5, step 1: the live source
+
+> Call the live source twice for the area around Chicago O'Hare, about 3 minutes apart, show what changed, check its rate limits and terms, and recommend how often the worker should run and when an aircraft has "changed enough" to write it.
+
+### OpenSky first, then adsb.fi
+
+The plan was OpenSky. Two anonymous calls from my Mac (over a VPN; my own network couldn't reach it) worked, at 1 credit each for a 1°×1° box. The worker has to run on Supabase, though, and from a temporary Edge Function OpenSky timed out on every call. Its docs say it "may block AWS and other hyperscalers". From the same function, adsb.lol answered 429 on 2 of 3 calls, because Supabase's IP is shared with other projects. adsb.fi answered all 3, in about 140 ms. So the source is adsb.fi.
+
+### Two calls to adsb.fi
+
+`GET https://opendata.adsb.fi/api/v3/lat/41.974/lon/-87.907/dist/30`: aircraft within 30 NM of O'Hare, on 3 Nov 2026 at 07:51:25 and 07:54:25 UTC.
+
+| Call | HTTP | Size | Time | Aircraft |
+|---|---|---|---|---|
+| 1 | 200 | 4,894 B | 0.21 s | 9 |
+| 2 | 200 | 3,671 B | 0.24 s | 7 |
+
+**The fields we'd use, with their units** (from readsb's JSON format, which adsb.fi follows):
+
+| Field | Example | Meaning |
+|---|---|---|
+| `hex` | `781273` | the transponder's ICAO address: the aircraft's key |
+| `flight` | `"YZR7451 "` | callsign, padded to 8 characters; missing for some aircraft on the ground |
+| `r`, `t`, `desc` | `B-1340`, `B744`, "BOEING 747-400" | registration and type, from adsb.fi's database |
+| `alt_baro` | `4100`, or `"ground"` | barometric altitude in **feet**, or the string `"ground"` on the ground |
+| `alt_geom` | `4050` | GPS altitude in feet |
+| `gs` | `247.5` | ground speed in **knots** |
+| `track` | `148.04` | direction of travel, degrees from true north |
+| `baro_rate` / `geom_rate` | `-832` | climb (+) or descent (−) in **feet per minute** |
+| `lat`, `lon` | `42.0218`, `-88.3581` | position |
+| `seen` / `seen_pos` | `0.0` / `0.266` | **seconds** since the last message / the last position |
+| `dst` / `dir` | `20.288` / `278.3` | distance from the point asked about, in **nautical miles**, and its bearing in degrees |
+
+**What changed in 180 s:**
+
+- **Appeared (1):** CAL5235, a Boeing 777F on the ground 1.2 NM out, at 1.6 kt.
+- **Left (3):** AMX689 at 14,200 ft and GTI9013 at 16,025 ft, both climbing out past 30 NM. And N891NN, a 737 taxiing at 0.9 NM: it can't have left the airport in 3 minutes, so ground coverage dropped it.
+- **Stayed (6):**
+
+| Aircraft | Altitude (ft) | Speed (kt) | Distance (NM) | |
+|---|---|---|---|---|
+| AFR6733 (777F) | 1,350 → 9,075 | 182 → 312 | 0.8 → 10.7 | took off, climbing |
+| YZR7451 (747) | 4,100 → 3,275 | 248 → 216 | 20.3 → 9.1 | arriving, descending |
+| GTX508 (Bonanza) | 2,600 → 4,900 | 78 → 95 | 3.4 → 7.4 | climbing |
+| LBQ650 (PC-12) | 5,975 → 4,950 | 241 → 272 | 12.9 → 8.8 | descending |
+| AAL2409 (A319) | ground → ground | 0 → 0 | 0.46 → 0.46 | parked, unchanged |
+| N14539 (A321neo) | ground → ground | 0 → 0 | 0.09 → 0.09 | parked, unchanged (no callsign; position 38–45 s old) |
+
+### Rate limits and terms
+
+From adsb.fi's open data README (github.com/adsbfi/opendata):
+
+- **Rate limit:** public endpoints allow 1 request per second. The point query reaches up to 250 NM.
+- **No key, and no rate-limit headers:** the response says nothing about the limit. A 429 is the only signal.
+- **Temporary IP block:** "Requests returning a 400, 401, 403, 404, or 429 status code count toward the limit." Supabase's IP is shared, so the worker must never retry in a loop.
+- **Terms:** "adsb.fi open data is for personal, non-commercial use only", provided as-is. "You must cite adsb.fi and include a link to our home page."
+
+### Recommendations
+
+- **Run every minute.** There are no daily credits; what limits us is adsb.fi's 1 request per second and Supabase's 500,000 Edge Function calls a month. Once a minute is 44,640 calls a month, about 9% of that. In one minute an arriving airliner moves about 4 NM, so the board changes every run without falling behind. One call per airport that anyone follows, at least 1.1 s apart. Skip the call when nobody follows anything, and stop the run at the first 429.
+- **Save:**
+  - `hex` (the key) and the airport code
+  - `flight` (trimmed), `r`, `t`
+  - `alt_baro` as whole feet, plus `on_ground` (true when it's `"ground"`)
+  - `gs`, `baro_rate` (or `geom_rate`), `track`, `dst`, `dir`, `lat`, `lon`
+  - when it was seen (`now − seen_pos`)
+  - a phase worked out from those: parked, taxiing, climbing, descending or cruising
+- **Don't save** the signal-quality fields (`nic`, `nac_*`, `sil`, `rssi`, `messages`, and so on), `nav_*`, `squawk`, `desc`, `ownOp` or `year`.
+- **"Changed enough" means what the board shows changed.** Write an aircraft only when one of these is different:
+  - its phase or `on_ground`
+  - its altitude rounded to 100 ft
+  - its speed rounded to 10 kt
+  - its distance rounded to 0.5 NM
+  - its callsign
+
+  Insert new aircraft. Delete one only after it has been missing for 2 runs in a row, so a ground coverage gap like N891NN's doesn't delete and re-add it. In this sample, the two parked aircraft would not be written at all. At a busy airport, much of the traffic on the ground would be skipped like that.
+- **Realtime:** send one message per airport per run, and only when something changed there, not one per aircraft.
+
+### What I learned
+
+- **Test where the code will run.** OpenSky worked from my Mac over a VPN and never from Supabase. A source is only usable if the worker's own servers can reach it.
+- **A shared IP shares its limits.** adsb.lol's 429s weren't caused by our traffic, and adsb.fi counts errors toward blocking the IP. Retrying in a loop could get Supabase's address blocked for everyone using it.
+- **"Changed" should mean "looks different".** Comparing the values the board actually shows, rounded, avoids rewriting rows when a number only moved in its decimals.
+
+## Assignment 5, step 2: the tools
+
+> Confirm each tool works: the Supabase MCP in write mode, pg_cron and pg_net, the Clerk CLI, the Vercel preview for this branch, the Playwright MCP, and origin/HEAD.
+
+Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
+
+| Tool | What it's for | Works? |
+|---|---|---|
+| Supabase MCP, write mode | Apply migrations, deploy and delete Edge Functions, set secrets, run SQL from the agent | **No.** `.mcp.json` still has `read_only=true`, and the server's tools aren't loaded in the agent's session, so nothing can be written through it yet. |
+| pg_cron | Supabase Cron: runs the worker every minute | **Not checked.** It needs the MCP or a database connection, and neither was available. |
+| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Not checked**, for the same reason. |
+| Clerk CLI (`clerk`, from npm) | Manage the Clerk app and test users from the terminal | **No.** Not installed. Running it with `npx` (which downloads and runs it) was refused by the agent's permission check. |
+| Vercel preview | A deploy of this branch to test before merging | **Yes.** Vercel built `07668e5` ("Deployment has completed") at `design-assignment5-git-assignment-5-alejandro-6aea.vercel.app`. Deployment Protection keeps it behind a Vercel login. |
+| Playwright MCP | Drive a real browser: check pages and take screenshots | **Yes.** It opened adsb.fi, read its open data README and opened the preview. |
+| Playwright (test runner) | The end-to-end isolation test | **Yes.** It passed after each of fixes 1 to 3. |
+| `origin/HEAD` | The default branch git compares against | **Yes.** It points to `origin/main`. |
+| GitHub CLI (`gh`) | Commit statuses and deployments | **Yes.** It's how the Vercel status above was read. |
+| Supabase Edge Functions (dashboard) | Where the worker will run | **Yes.** The temporary `opensky-probe` was deployed from the dashboard and reached adsb.fi. |
+
+### What I learned
+
+- **A config file isn't a working tool.** The Supabase MCP is configured, but it's read-only and not connected to the agent, so in practice it can't do anything yet. Checking means using it, not reading its settings.
+- **Write access should be a choice.** Turning off `read_only` gives the agent the shared production database, which Assignment 4 still uses. That's for me to do, not for the agent to switch on itself.
