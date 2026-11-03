@@ -27,10 +27,12 @@ export type AdsbAircraft = {
   baro_rate?: unknown; // feet per minute
   geom_rate?: unknown;
   dst?: unknown; // nautical miles from the point asked about
+  dir?: unknown; // degrees: its direction from the point asked about
+  track?: unknown; // degrees: the direction it's moving
   seen_pos?: unknown; // seconds since the last position
 };
 
-export type Status = "on_ground" | "departing" | "arriving" | "overflying";
+export type Status = "on_ground" | "climbing" | "descending" | "level";
 
 // A row of public.aircraft.
 export type AircraftRow = {
@@ -42,6 +44,8 @@ export type AircraftRow = {
   speed_kt: number | null;
   vertical_rate_fpm: number | null;
   distance_nm: number;
+  bearing_deg: number | null;
+  track_deg: number | null;
   status: Status;
   seen_at: string;
   missed_runs: number;
@@ -63,16 +67,22 @@ const text = (value: unknown, max: number) => {
   return trimmed ? trimmed.slice(0, max) : null;
 };
 
-// A guess from the aircraft's own data, not flight status: low and climbing is
-// departing, low and descending is arriving, anything else in the air overflying.
+// What the aircraft is doing, as its transponder reports it: on the ground, climbing
+// or descending by more than 300 ft a minute, or level (passing over).
 export function statusOf(altitudeFt: number | null, rateFpm: number | null): Status {
   if (altitudeFt === null) return "on_ground";
-  if (altitudeFt < 10_000 && rateFpm !== null) {
-    if (rateFpm > 300) return "departing";
-    if (rateFpm < -300) return "arriving";
-  }
-  return "overflying";
+  if (rateFpm !== null && rateFpm > 300) return "climbing";
+  if (rateFpm !== null && rateFpm < -300) return "descending";
+  return "level";
 }
+
+// An angle in degrees, 0 up to (not including) 360, to 1 decimal; null if missing.
+const angle = (value: unknown) => {
+  const degrees = num(value);
+  if (degrees === null) return null;
+  const rounded = Math.round((((degrees % 360) + 360) % 360) * 10) / 10;
+  return rounded === 360 ? 0 : rounded;
+};
 
 // One aircraft from adsb.fi as a row, or null when it shouldn't be on the board: no
 // valid address, too far, no recent position, or in the air with no altitude.
@@ -98,14 +108,16 @@ export function toRow(airportCode: string, aircraft: AdsbAircraft, nowMs: number
     speed_kt: speed === null ? null : Math.round(speed),
     vertical_rate_fpm: rateFpm,
     distance_nm: Math.round(distance * 10) / 10,
+    bearing_deg: angle(aircraft.dir),
+    track_deg: angle(aircraft.track),
     status: statusOf(altitudeFt, rateFpm),
     seen_at: new Date(nowMs - positionAge * 1000).toISOString(),
     missed_runs: 0,
   };
 }
 
-// What the board shows of a row, rounded as it's shown: when this is the same, the
-// aircraft hasn't "changed enough" to write.
+// What the board and its radar show of a row, rounded as they show it: when this is
+// the same, the aircraft hasn't "changed enough" to write.
 function shown(row: AircraftRow) {
   const round = (value: number | null, step: number) => (value === null ? null : Math.round(value / step));
   return JSON.stringify([
@@ -115,6 +127,8 @@ function shown(row: AircraftRow) {
     round(row.altitude_ft, 100),
     round(row.speed_kt, 10),
     round(row.distance_nm, 0.5),
+    round(row.bearing_deg, 5),
+    round(row.track_deg, 15),
   ]);
 }
 

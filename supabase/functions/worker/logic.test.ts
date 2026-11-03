@@ -30,23 +30,24 @@ function apply(previous: AircraftRow[], plan: AirportPlan): AircraftRow[] {
 }
 const hexes = (rows: { hex: string }[]) => rows.map((row) => row.hex).sort();
 
-test("the status rule: on the ground, departing, arriving, overflying", () => {
+test("the status rule: on the ground, climbing, descending, level", () => {
   assert.equal(statusOf(null, null), "on_ground");
-  assert.equal(statusOf(1_350, 3_456), "departing");
-  assert.equal(statusOf(4_100, -832), "arriving");
-  assert.equal(statusOf(16_025, 1_984), "overflying"); // climbing, but above 10,000 ft
-  assert.equal(statusOf(5_975, 64), "overflying"); // low, but level
-  assert.equal(statusOf(9_999, 301), "departing");
-  assert.equal(statusOf(10_000, 2_000), "overflying");
+  assert.equal(statusOf(1_350, 3_456), "climbing");
+  assert.equal(statusOf(4_100, -832), "descending");
+  assert.equal(statusOf(16_025, 1_984), "climbing"); // at any height
+  assert.equal(statusOf(5_975, 64), "level"); // under 300 ft a minute either way
+  assert.equal(statusOf(37_000, -300), "level");
+  assert.equal(statusOf(37_000, -301), "descending");
+  assert.equal(statusOf(2_000, null), "level"); // no rate reported
 
   const statuses = Object.fromEntries(planAirport("ORD", [], first.ac, first.now).upserts.map((row) => [row.callsign ?? row.hex, row.status]));
   assert.deepEqual(statuses, {
-    AFR6733: "departing", // 1,350 ft, +3,456 ft/min
-    GTX508: "departing", // 2,600 ft, +1,152 ft/min
-    YZR7451: "arriving", // 4,100 ft, −832 ft/min
-    LBQ650: "overflying", // 5,975 ft, level
-    AMX689: "overflying", // 14,200 ft
-    GTI9013: "overflying", // 16,025 ft
+    AFR6733: "climbing", // 1,350 ft, +3,456 ft/min
+    GTX508: "climbing", // 2,600 ft, +1,152 ft/min
+    YZR7451: "descending", // 4,100 ft, −832 ft/min
+    LBQ650: "level", // 5,975 ft, +64 ft/min
+    AMX689: "climbing", // 14,200 ft, +2,560 ft/min
+    GTI9013: "climbing", // 16,025 ft, +1,984 ft/min
     AAL2409: "on_ground",
     a0b826: "on_ground", // no callsign
     ac4a44: "on_ground",
@@ -70,6 +71,8 @@ test("the first check writes every aircraft on the board, with units as saved", 
   assert.equal(afr.speed_kt, 182); // knots, rounded
   assert.equal(afr.vertical_rate_fpm, 3_456); // feet per minute
   assert.equal(afr.distance_nm, 0.8); // nautical miles, 1 decimal
+  assert.equal(afr.bearing_deg, 125.3); // its direction from the airport, for the radar
+  assert.equal(afr.track_deg, 86.9); // the direction it’s moving, as adsb.fi sent it
   const parked = plan.upserts.find((row) => row.callsign === "AAL2409")!;
   assert.equal(parked.altitude_ft, null); // "ground"
   assert.equal(parked.vertical_rate_fpm, null);
