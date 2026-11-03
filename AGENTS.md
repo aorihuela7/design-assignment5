@@ -7,7 +7,7 @@
 
 ## Working rules
 - Work on the `assignment-5` branch. This repo deploys to its own Vercel project.
-- Stay on free tiers: OpenSky's free account allows 4,000 credits a day; Supabase allows 500,000 Edge Function calls a month, and Realtime counts every message sent to every open page. Save only rows that changed, and keep Realtime messages low.
+- Stay on free tiers: adsb.fi allows 1 request per second per IP (Supabase's IP is shared with other projects), and its 400, 401, 403, 404 and 429 responses count toward a temporary IP block; Supabase allows 500,000 Edge Function calls a month, and Realtime counts every message sent to every open page. Save only rows that changed, and keep Realtime messages low.
 - No package beyond Clerk, Supabase and Playwright without asking me first.
 - Never kill or reuse processes or ports you didn’t start in this session; pick a free port and clean up only your own processes.
 - When unsure, ask me (I get push notifications on my phone).
@@ -18,8 +18,8 @@ Next.js (App Router) and Tailwind CSS. Clerk for sign-in (development keys only)
 - The worker is a Supabase Edge Function (Deno, in `supabase/functions`), run by Supabase Cron. `supabase` is in the `exclude` list of `tsconfig.json`, so the Next.js build doesn't type-check the worker.
 - Supabase Realtime pushes changes to the live page.
 - The worker writes with the Supabase secret key that Supabase provides on its own servers; it never goes in code, commits, logs or the browser.
-- OpenSky's `client_id` and `client_secret` are Edge Function secrets that I set myself.
-- Test the worker deployed on Supabase, where those secrets already are, rather than locally.
+- adsb.fi needs no key, so the worker has no secrets of its own.
+- Test the worker deployed on Supabase rather than locally: a source can answer from my Mac and still refuse Supabase.
 
 ## Shared with Assignment 4
 This repo shares the Supabase project and the Clerk app with Assignment 4, whose production app still uses them.
@@ -28,11 +28,11 @@ This repo shares the Supabase project and the Clerk app with Assignment 4, whose
 - Ask me before any migration.
 
 ## Live board
-- The live source is OpenSky. Open-Meteo weather is an existing feature, not this assignment's live source: don't use it in the worker.
+- The live source is adsb.fi's open data API (`https://opendata.adsb.fi/api/v3/lat/{lat}/lon/{lon}/dist/{nm}`, up to 250 NM, no key). Decided 3 Nov, step 1: OpenSky never answered from Supabase (it blocks big cloud providers' IPs), and adsb.lol answered 429 on 2 of 3 calls from Supabase's shared IP. Open-Meteo weather is an existing feature, not this assignment's live source: don't use it in the worker.
 - The live part is a separate "Live board" section (a tab in the Header next to My trips), showing live air traffic around the airports each person follows, in the departures-board style.
 - It is not flight status, and the page must say so plainly.
 - It may suggest airports from the person's trip destinations, but adds nothing to the trip page.
-- Credit OpenSky on the page, as its terms require.
+- adsb.fi's terms: personal, non-commercial use only, and cite adsb.fi with a link to https://adsb.fi on the page.
 
 ## Security
 - Keys live only in environment variables: never in code, commits or logs.
