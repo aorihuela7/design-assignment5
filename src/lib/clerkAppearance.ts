@@ -36,3 +36,9 @@ export const clerkAppearance: NextClerkProviderProps["appearance"] = {
     avatarBox: "size-8",
   },
 };
+
+// Clerk's own wording, except the title, which otherwise names the Clerk app
+// ("Sign in to My Application"), shared with Assignment 4.
+export const clerkLocalization: NextClerkProviderProps["localization"] = {
+  signIn: { start: { title: "Sign in to Pack Again" } },
+};
