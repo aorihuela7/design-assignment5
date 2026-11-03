@@ -21,6 +21,8 @@ type PageProps = {
   titleAction?: ReactNode;
   // A line on the band under the title, like a trip's departure.
   detail?: string;
+  // The Header tab it's in: My trips (the default, with each trip) or Live board.
+  section?: "trips" | "live";
   children: ReactNode;
 };
 
@@ -34,14 +36,16 @@ export function Page({
   wide = false,
   titleAction,
   detail,
+  section = "trips",
   children,
 }: PageProps) {
   return (
     <>
-      {/* Only home (My trips, or the landing page) has no back link. */}
+      {/* Only home (My trips, or the landing page) has no back link. The Live board is
+          a tab of its own, so it has none either, and isn't home. */}
       <Header
         title={title}
-        isHome={!back}
+        isHome={!back && section === "trips"}
         titleLoading={titleLoading}
         airport={airport}
         titleTransition={titleTransition}
@@ -49,6 +53,7 @@ export function Page({
         wide={wide}
         titleAction={titleAction}
         detail={detail}
+        section={section}
       />
       {/* Moving to another page fades the content out and the new content in. */}
       <ViewTransition enter="page-in" exit="page-out" default="none">

@@ -25,6 +25,8 @@ type HeaderProps = {
   titleAction?: ReactNode;
   // A line under the title, like a trip's departure.
   detail?: string;
+  // Which tab the page belongs to, for signed-in people: My trips (and each trip) or Live board.
+  section?: "trips" | "live";
 };
 
 // Amber caps on the band; the accent stays for each page's primary action.
@@ -41,12 +43,14 @@ export function Header({
   wide = false,
   titleAction,
   detail,
+  section = "trips",
 }: HeaderProps) {
   return (
     <header data-surface="board" className="bg-board text-amber">
       <div className={`mx-auto w-full ${wide ? "max-w-288" : "max-w-225"} px-4 pt-3 pb-5 sm:px-6`}>
         <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-widest">
-          <Link href="/" aria-current={isHome ? "page" : undefined} className={`${bandLink} hover:underline`}>
+          {/* Signed in, the tabs below say where you are. */}
+          <Link href="/" aria-current={isHome && signedOut ? "page" : undefined} className={`${bandLink} hover:underline`}>
             Pack Again
           </Link>
           <div className="ml-auto flex items-center gap-4">
@@ -75,6 +79,17 @@ export function Header({
             )}
           </div>
         </div>
+        {!signedOut && (
+          <nav aria-label="Sections" className="flex gap-5 font-mono text-xs uppercase tracking-widest">
+            {/* A trip's page is in My trips too, so that tab shows as current there. */}
+            <Tab href="/" current={section === "trips" ? (isHome ? "page" : "true") : undefined}>
+              My trips
+            </Tab>
+            <Tab href="/live" current={section === "live" ? "page" : undefined}>
+              Live board
+            </Tab>
+          </nav>
+        )}
         {/* The title, then anything beside it: under it on a phone, so the band's height
             doesn't depend on how long the title is; beside it on wider screens. */}
         <div className="mt-1 flex flex-col items-start sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
@@ -101,6 +116,19 @@ export function Header({
         {detail && <p className="mt-1 font-mono text-xs uppercase tracking-widest">{detail}</p>}
       </div>
     </header>
+  );
+}
+
+// The current tab is underlined thickly; the others underline on hover. Not color alone.
+function Tab({ href, current, children }: { href: string; current?: "page" | "true"; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-current={current}
+      className={`${bandLink} ${current ? "underline decoration-2 underline-offset-[6px]" : "hover:underline"}`}
+    >
+      {children}
+    </Link>
   );
 }
 
