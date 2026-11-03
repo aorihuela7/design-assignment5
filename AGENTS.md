@@ -19,6 +19,7 @@ Next.js (App Router) and Tailwind CSS. Clerk for sign-in (development keys only)
 - Supabase Realtime pushes changes to the live page.
 - The worker writes with the Supabase secret key that Supabase provides on its own servers; it never goes in code, commits, logs or the browser.
 - OpenSky's `client_id` and `client_secret` are Edge Function secrets that I set myself.
+- Test the worker deployed on Supabase, where those secrets already are, rather than locally.
 
 ## Shared with Assignment 4
 This repo shares the Supabase project and the Clerk app with Assignment 4, whose production app still uses them.
