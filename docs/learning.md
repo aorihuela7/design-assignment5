@@ -453,3 +453,15 @@ My professor's feedback on Assignment 4, fixed on the `assignment-5` branch befo
 
 - **Placement has to come from a grid, not from the component.** Clerk's card has its own fixed width, so dropped into a page it sat wherever it landed. Giving it a column of its own and centering it there makes the position a decision.
 - **A ticket's notches assume the page behind it.** The pass's half-circle notches were drawn in the page color, so on the navy panel they showed as light dots. They now take `--notch`, which the panel sets to navy.
+
+### Fix 2: real airport codes
+
+**What my professor said.** The 3-letter codes look like airport codes, but they were made up from trip names (and city names), so they didn't mean anything.
+
+**What changed.** A trip's code is now the real code of its destination's nearest major airport, named beside it so it reads as an airport: "MAD · Madrid–Barajas", then the place on the line under it. Screen readers hear "Nearest airport: Madrid–Barajas (MAD)". The airports are a curated list of 136 in `src/lib/airports.ts` (the busiest, and each region's main hub, one per city), which the Live board will use too. The nearest is found by great-circle distance; with no destination, or nothing on the list within 150 km (Alice Springs, say), there's no code. The codes made from trip names are gone, and so is New trip's code preview, since a new trip has no destination yet.
+
+**What I learned.**
+
+- **A code that looks real has to be real.** Airport-style letters set up an expectation; letters from a trip's name broke it. A real code plus the airport's name keeps the Departures look and removes the guessing.
+- **Removing a feature removes its edge cases.** Name codes needed a uniqueness pass across all of a person's trips, in storage order, so they didn't change when the list was re-sorted. Airport codes depend only on the trip's own destination, so `tripCodes()` and its clash rules went away.
+- **Thresholds need a test case on both sides.** Toledo and Granada find MAD and AGP within 150 km; Alice Springs finds nothing, and its card shows only the place.
