@@ -121,7 +121,7 @@ On the `polish` branch, in batches, with [before and after screenshots](docs/pol
   - **The list:** the runway and count, with Clear all ticks beside them once something is ticked; the Add item form, on one row on wider screens; then the sections.
   - **The weather:** everything about the destination, in one place. On wider screens it's a panel beside the list that stays in view as you scroll. On a phone it's one block at the top that opens and closes, showing today's high, low and first tip while closed.
   - **Trip options:** Rename trip and Delete trip, in a menu beside the trip's name.
-- **Destination codes.** A trip that's going somewhere takes its city's first 3 letters, like an airport: MAD for Madrid, MAL for Málaga, SAO for São Paulo. Trips without a destination keep the code their name gives them.
+- **Airport codes.** A trip that's going somewhere shows its destination's nearest major airport, named so it reads as one: "MAD · Madrid–Barajas" for Madrid, "AGP · Málaga" for Málaga. The airports come from a curated list of 136 in `src/lib/airports.ts`, the same list the Live board uses. With no destination, or no listed airport within 150 km, there's no code. (Assignment 4 made codes from city and trip names, which looked like airport codes but weren't.)
 - **Fixed: pages kept in the background.** Next.js 16 keeps visited pages alive and shows them again as they were left. That broke a few things, in production too:
   - A card you'd opened kept its plane at the end of the runway and wouldn't open again.
   - My trips didn't say "Deleted …".
@@ -133,7 +133,7 @@ On the `polish` branch, in batches, with [before and after screenshots](docs/pol
   - **A greeting:** "Good evening, Alejandro." and one line on where the trips stand ("2 trips to pack, 1 packed."), by the person's own clock and their account's first name.
   - **Where each trip goes, and its weather today there:** "MÁLAGA, SPAIN", and under the name an icon with the words and the high and low. It's the same forecast the trip page shows, so opening the trip asks Open-Meteo for nothing more. Trips with no destination invite "Add a destination for weather tips", which opens the trip ready to type one.
   - **A status stamp** on each stub: NOT STARTED, BOARDING 40% or PACKED.
-  - **Motion:** the tickets come in one after another the first time they show, a card lifts 2px on hover or keyboard focus, a stamp presses on when its status changes, and a code flips like a departures board when the destination changes it. All of it 200ms or less per element, and none of it with reduced motion.
+  - **Motion:** the tickets come in one after another the first time they show, a card lifts 2px on hover or keyboard focus, a stamp presses on when its status changes, and an airport code flips like a departures board when the destination changes it. All of it 200ms or less per element, and none of it with reduced motion.
 - **Packing, made easier.**
   - **Progress per section:** "2 of 3 packed" beside each section's heading.
   - **Hide packed,** in the packing bar: hides what's packed when you press it. Items you tick after that stay in view, struck through, so nothing moves under your next tap.
@@ -216,6 +216,6 @@ Before the database step, an audit of every screen and state at 390px and 1440px
 
 - **Visual polish:** the packing bar keeps one height, so the list never jumps when a message or All packed appears; runways line up from card to card; Remove is quieter than the item names; loading states have the shape of what loads; empty states are dashed tickets; one style for text actions; a warning sign and a solid ink button on Delete trip; the trip's code on its page; the Departures plane as the favicon.
 - **Motion:** the takeoffs, the title morph, rows easing in, the NEW stamp and panels fading in place, as above.
-- **A live ticket on New trip,** showing the name and code as you type.
+- **A live ticket on New trip,** showing the name as you type.
 
 Ideas that need new saved fields wait in [docs/plan.md](docs/plan.md). The saved data and its key didn't change.

@@ -42,7 +42,7 @@ const pairs = [
   ["Text", "ink", "surface", TEXT, "Cards, item names, labels, field text, error text, links, NEW badge, a card's weather today, Add a destination for weather tips"],
   ["Text", "ink", "line", TEXT, "Secondary and quiet buttons, pressed"],
   ["Text", "muted", "canvas", TEXT, "Summary under the greeting, loading text, BackLink pressed, Remove on a hovered row, Weather data by Open-Meteo.com, today's tip in the weather panel, each section's packed count"],
-  ["Text", "muted", "surface", TEXT, "Code label, a card's destination, Weather unavailable, Last packed, placeholder, packed (struck) items, Remove, 5 places found"],
+  ["Text", "muted", "surface", TEXT, "A card's airport line, a card's destination, Weather unavailable, Last packed, placeholder, packed (struck) items, Remove, 5 places found"],
   ["Text", "ink", "stub", TEXT, "Boarding pass stub: count, Open, status stamp, Departs in 3 days"],
   ["Text", "muted", "stub", TEXT, "Boarding pass stub: Last packed"],
   ["Text", "amber", "board", TEXT, "Header: PACK AGAIN, Sign in and Sign up links; the sign-in panel's name and line; Trip options, a trip's departure; forecast board: days, weather, temperatures, rain"],
