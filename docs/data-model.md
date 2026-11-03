@@ -73,7 +73,9 @@ erDiagram
     int speed_kt
     int vertical_rate_fpm
     numeric distance_nm "from the airport"
-    text status "on_ground, departing, arriving, overflying"
+    real bearing_deg "direction from the airport"
+    real track_deg "direction it's moving"
+    text status "on_ground, climbing, descending, level"
     timestamptz seen_at
     smallint missed_runs "deleted at 2"
     timestamptz updated_at

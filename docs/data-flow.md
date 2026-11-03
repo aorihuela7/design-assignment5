@@ -38,7 +38,7 @@ flowchart LR
 
 1. **Supabase Cron** calls the worker with a secret header (`WORKER_SECRET`, read from Vault each time; also an Edge Function secret; never in code). The worker refuses calls without it, and skips a call that comes under 8 s after the last run.
 2. **The worker** reads which airports anyone follows, deduplicated, and fetches each one from adsb.fi, 1.1 s apart, within 30 NM: the ones checked longest ago first, at most 10, and none started after 5.5 s, so a run ends before the next. The rest wait for the next run. A 429 or a timeout is recorded for that airport, and the run goes on; after a 429 it stops asking adsb.fi until the next run.
-3. **It writes only aircraft that changed enough:** a different status or callsign, or a change in altitude (to the nearest 100 ft), speed (10 kt) or distance (0.5 NM). It inserts new aircraft, and deletes one after it has been missing for 2 runs in a row. It also deletes the rows of airports no one follows any more.
+3. **It writes only aircraft that changed enough:** a different status or callsign, or a change in altitude (to the nearest 100 ft), speed (10 kt), distance (0.5 NM), bearing (5°) or track (15°). It inserts new aircraft, and deletes one after it has been missing for 2 runs in a row. It also deletes the rows of airports no one follows any more.
 4. **It updates one `airport_updates` row** for each airport it fetched: always when something changed or a check failed, and otherwise every 30 s (the heartbeat), so a quiet airport doesn't send a Realtime message every 10 s. With more than 5 airports followed, always, because `checked_at` decides which go first. It adds one `worker_runs` row for the run, and deletes runs older than 24 hours.
 5. **Realtime** sends that `airport_updates` change to each open page that follows the airport: one message per followed airport per run. `aircraft` isn't in the publication, so a single aircraft never sends a message.
 6. **The page** refetches that airport's aircraft only when `changed > 0`.
@@ -48,17 +48,19 @@ flowchart LR
 | Table | One row per | Columns | Who can read and write |
 |---|---|---|---|
 | `follows` | person and airport | `user_id`, `airport_code` (3 letters, from the curated list), `created_at` | Each person sees, adds and removes only their own, at most 3. No update: you follow or unfollow. |
-| `aircraft` | aircraft near an airport | `airport_code`, `hex`, `callsign`, `type`, `altitude_ft` (`null` on the ground), `speed_kt`, `vertical_rate_fpm`, `distance_nm`, `status`, `seen_at`, `missed_runs`, `updated_at` | Any signed-in person reads. Only the worker writes. |
+| `aircraft` | aircraft near an airport | `airport_code`, `hex`, `callsign`, `type`, `altitude_ft` (`null` on the ground), `speed_kt`, `vertical_rate_fpm`, `distance_nm`, `bearing_deg`, `track_deg`, `status`, `seen_at`, `missed_runs`, `updated_at` | Any signed-in person reads. Only the worker writes. |
 | `airport_updates` | followed airport | `airport_code`, `checked_at`, `ok`, `aircraft_count`, `changed` | Any signed-in person reads, and gets its changes through Realtime. Only the worker writes. |
 | `worker_runs` | run, kept 24 hours | `id`, `started_at`, `duration_ms`, `airports`, `airports_failed`, `rows_changed`, `ok`, `error` (short, never a secret) | Any signed-in person reads. Only the worker writes. |
 
 Anonymous visitors have no grants on any of them.
 
-**Status** is a guess from the aircraft's own data. It says nothing about any flight, and the page says it isn't flight status:
-- **on ground:** adsb.fi reports `"ground"`
-- **departing:** below 10,000 ft and climbing more than 300 ft/min
-- **arriving:** below 10,000 ft and descending more than 300 ft/min
-- **overflying:** anything else
+**Status** is what the aircraft is doing, as its transponder reports it, not a flight's schedule; the page says "Live positions from aircraft transponders. Not flight schedules.":
+- **on_ground** ("On ground"): adsb.fi reports `"ground"`
+- **climbing** ("Climbing"): climbing more than 300 ft/min
+- **descending** ("Descending"): descending more than 300 ft/min
+- **level** ("Passing over"): anything else in the air
+
+The board lists descending and climbing aircraft first, then those on the ground, then those passing over, nearest first. `bearing_deg` (its direction from the airport) and `track_deg` (the direction it's moving) place each aircraft on the radar.
 
 ## What the page shows
 
