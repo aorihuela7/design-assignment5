@@ -70,12 +70,12 @@ flowchart LR
     CLERK["Clerk<br/>sign-in, session token"]
   end
   subgraph Supabase
-    CRON["Supabase Cron (pg_cron)<br/>every minute, pg_net POST + WORKER_SECRET"]
+    CRON["Supabase Cron (pg_cron)<br/>every 10 s, pg_net POST + WORKER_SECRET from Vault"]
     WORKER["Worker: Edge Function (Deno)<br/>secret key provided by Supabase"]
     FOLLOWS[("follows<br/>user_id, airport_code<br/>RLS: own rows only")]
     AIRCRAFT[("aircraft<br/>one row per aircraft per airport<br/>RLS: any signed-in person reads")]
     UPDATES[("airport_updates<br/>one row per airport: checked_at, ok, counts<br/>RLS: any signed-in person reads")]
-    RUNS[("worker_runs<br/>one row per run, 7 days<br/>worker only")]
+    RUNS[("worker_runs<br/>one row per run, 24 hours<br/>RLS: any signed-in person reads")]
     RT["Realtime<br/>publication: airport_updates only"]
   end
   subgraph Vercel
