@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { Suspense } from "react";
-import { Page } from "@/components/Page";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -11,10 +11,10 @@ const loading = <p role="status" className="text-muted">Loading sign-in…</p>;
 // A catch-all route, so Clerk's later steps (like the email code) stay on this page.
 export default function SignInPage() {
   return (
-    <Page title="Sign in" back={{ href: "/", label: "Back to Pack Again" }} signedOut>
+    <AuthLayout title="Sign in">
       <Suspense fallback={loading}>
         <SignIn fallback={loading} />
       </Suspense>
-    </Page>
+    </AuthLayout>
   );
 }

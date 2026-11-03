@@ -11,7 +11,7 @@ import { LoadFailed } from "@/components/LoadFailed";
 import { Page } from "@/components/Page";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TextButton } from "@/components/TextLink";
-import { tripCodes } from "@/lib/codes";
+import { nearestAirport } from "@/lib/airports";
 import { departureLine, formatCalendarDay, formatDay, localDay } from "@/lib/dates";
 import { setFlash } from "@/lib/flash";
 import { prefersReducedMotion } from "@/lib/motion";
@@ -386,12 +386,11 @@ export function PackingList({ params }: { params: Promise<{ id: string }> }) {
   const rows = hiddenIds ? allRows.filter((item) => !hiddenIds.has(item.id)) : allRows;
 
   return (
-    // Codes come from all trips in storage order, as on My trips, so they match the card.
     <Page
       title={trip.name}
       back={BACK_TO_MY_TRIPS}
       wide
-      code={tripCodes(storage.trips).get(trip.id)}
+      airport={nearestAirport(trip.destination)}
       titleTransition={tripTitleTransition(trip.id)}
       // Only after mount: "in 7 days" depends on today, on the person's calendar.
       detail={trip.departsOn && now !== null ? departureLine(trip.departsOn, now) : undefined}
@@ -429,7 +428,14 @@ export function PackingList({ params }: { params: Promise<{ id: string }> }) {
         {/* Scrolls inside itself if it's taller than the window; the padding keeps focus
             rings clear of its edges. */}
         <div className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:p-1">
-          <Weather ref={weather} trip={trip} forecast={forecast} onSetDestination={saveDestination} onAdd={add} />
+          <Weather
+            ref={weather}
+            trip={trip}
+            forecast={forecast}
+            onSetDestination={saveDestination}
+            onAdd={add}
+            onAddDates={() => setOptions("departure")}
+          />
         </div>
 
         <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-1">

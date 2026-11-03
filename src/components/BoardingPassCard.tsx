@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, ViewTransition, type MouseEvent, type ReactNode } from "react";
+import type { Airport } from "@/lib/airports";
 import { formatDay } from "@/lib/dates";
 import { prefersReducedMotion } from "@/lib/motion";
 import type { ForecastState } from "@/lib/useForecast";
@@ -15,7 +16,8 @@ import { WeatherIcon } from "./WeatherIcon";
 
 type BoardingPassCardProps = {
   name: string;
-  code: string; // from tripCodes(): the destination's, or else one unique among the person's trips
+  // The destination's nearest major airport; none without a destination, or far from one.
+  airport?: Airport | null;
   // Where the trip goes ("Madrid, Spain"), and its weather there today; none without a destination.
   place?: string | null;
   today?: ForecastState | null;
@@ -46,7 +48,8 @@ const TAKEOFF_MS = 200;
 // Half-circle notches: a circle in the page color with two border sides colored,
 // rotated 45° so the colored half faces into the card. Sides swap at @md, when the
 // tear line turns vertical.
-const notch = "absolute size-5 rotate-45 rounded-full border border-transparent bg-canvas";
+// --notch: the color behind the ticket, if it isn't the page (the sign-in panel's navy).
+const notch = "absolute size-5 rotate-45 rounded-full border border-transparent bg-[var(--notch,var(--color-canvas))]";
 const notchStart =
   "-left-px top-0 -translate-x-1/2 -translate-y-1/2 border-t-current border-r-current @md:left-0 @md:-top-px @md:border-t-transparent @md:border-b-current";
 const notchEnd =
@@ -54,7 +57,7 @@ const notchEnd =
 
 export function BoardingPassCard({
   name,
-  code,
+  airport = null,
   place = null,
   today = null,
   departure = null,
@@ -94,11 +97,8 @@ export function BoardingPassCard({
       interactive
       main={
         <>
-          <p className={eyebrowClass}>
-            {/* Decorative ticket detail; the list name is the text that matters. */}
-            <FlipCode code={code} />
-            {place && <span className="uppercase">{place}</span>}
-          </p>
+          {airport && <AirportLine airport={airport} />}
+          {place && <p className={`${eyebrowClass} uppercase`}>{place}</p>}
           <ViewTransition name={titleTransition} share="morph" default="none">
             <h2 className={nameClass}>
               <CardLink href={href} onClick={takeOff}>
@@ -184,8 +184,22 @@ function StatusStamp({ id, status }: { id: string; status: string }) {
   );
 }
 
-// The code, then where the trip goes, wrapping under it if the place is long.
-const eyebrowClass = "flex flex-wrap gap-x-3 font-mono text-xs leading-4 tracking-widest text-muted";
+// The airport, then where the trip goes, each on its own line above the name.
+const eyebrowClass = "font-mono text-xs leading-4 tracking-widest text-muted";
+
+// "MAD · MADRID–BARAJAS": a real airport code, named, so it reads as an airport.
+function AirportLine({ airport }: { airport: Airport }) {
+  return (
+    <p className={`${eyebrowClass} uppercase`}>
+      <span aria-hidden="true">
+        <FlipCode code={airport.code} /> · {airport.name}
+      </span>
+      <span className="sr-only">
+        Nearest airport: {airport.name} ({airport.code})
+      </span>
+    </p>
+  );
+}
 
 // Today's weather at the destination, in one line that keeps its height while the
 // forecast loads, so the card doesn't grow when it arrives. If it can't load, the card
@@ -282,12 +296,19 @@ export function BoardingPassSkeleton() {
   );
 }
 
-// New trip's live preview: the ticket the trip will get, code included, updating as
-// the name is typed. Decorative (the field holds the name), so hidden from screen
-// readers. Once named on Create trip, its title morphs into the new page's title.
-type BoardingPassPreviewProps = { name: string; code: string; titleTransition?: string };
+// New trip's live preview: the ticket the trip will get, updating as the name is
+// typed. Decorative (the field holds the name), so hidden from screen readers. Once
+// named on Create trip, its title morphs into the new page's title. The sign-in
+// panel's sample pass has an airport and a list partly packed.
+type BoardingPassPreviewProps = {
+  name: string;
+  airport?: Airport | null;
+  titleTransition?: string;
+  packed?: number;
+  total?: number;
+};
 
-export function BoardingPassPreview({ name, code, titleTransition }: BoardingPassPreviewProps) {
+export function BoardingPassPreview({ name, airport = null, titleTransition, packed = 0, total = 0 }: BoardingPassPreviewProps) {
   const title = name ? (
     <p className={nameClass}>{name}</p>
   ) : (
@@ -300,13 +321,7 @@ export function BoardingPassPreview({ name, code, titleTransition }: BoardingPas
       <Ticket
         main={
           <>
-            {code ? (
-              <span className={eyebrowClass}>{code}</span>
-            ) : (
-              <span className="flex h-4 items-center">
-                <span className="h-3 w-8 rounded bg-canvas" />
-              </span>
-            )}
+            {airport && <AirportLine airport={airport} />}
             {titleTransition ? (
               <ViewTransition name={titleTransition} share="morph" default="none">
                 {title}
@@ -316,7 +331,7 @@ export function BoardingPassPreview({ name, code, titleTransition }: BoardingPas
             )}
           </>
         }
-        stub={<RunwayProgress packed={0} total={0} />}
+        stub={<RunwayProgress packed={packed} total={total} />}
       />
     </div>
   );

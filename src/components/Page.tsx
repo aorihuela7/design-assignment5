@@ -1,4 +1,5 @@
 import { ViewTransition, type ReactNode } from "react";
+import type { Airport } from "@/lib/airports";
 import { BackLink } from "./BackLink";
 import { Header } from "./Header";
 
@@ -8,8 +9,8 @@ type PageProps = {
   back?: { href: string; label: string };
   // The title isn't known yet (a trip's name is still loading).
   titleLoading?: boolean;
-  // A trip's code, shown on the board like on its card.
-  code?: string;
+  // A trip's nearest airport, its code shown on the board like on its card.
+  airport?: Airport | null;
   // A trip's page: its title morphs from the card that opened it.
   titleTransition?: string;
   // The landing, sign-in and sign-up pages: Sign in and Sign up instead of the account menu.
@@ -20,6 +21,8 @@ type PageProps = {
   titleAction?: ReactNode;
   // A line on the band under the title, like a trip's departure.
   detail?: string;
+  // The Header tab it's in: My trips (the default, with each trip) or Live board.
+  section?: "trips" | "live";
   children: ReactNode;
 };
 
@@ -27,27 +30,30 @@ export function Page({
   title,
   back,
   titleLoading = false,
-  code,
+  airport,
   titleTransition,
   signedOut,
   wide = false,
   titleAction,
   detail,
+  section = "trips",
   children,
 }: PageProps) {
   return (
     <>
-      {/* Only home (My trips, or the landing page) has no back link. */}
+      {/* Only home (My trips, or the landing page) has no back link. The Live board is
+          a tab of its own, so it has none either, and isn't home. */}
       <Header
         title={title}
-        isHome={!back}
+        isHome={!back && section === "trips"}
         titleLoading={titleLoading}
-        code={code}
+        airport={airport}
         titleTransition={titleTransition}
         signedOut={signedOut}
         wide={wide}
         titleAction={titleAction}
         detail={detail}
+        section={section}
       />
       {/* Moving to another page fades the content out and the new content in. */}
       <ViewTransition enter="page-in" exit="page-out" default="none">

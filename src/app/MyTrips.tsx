@@ -10,7 +10,7 @@ import { LoadFailed } from "@/components/LoadFailed";
 import { Notice } from "@/components/Notice";
 import { Page } from "@/components/Page";
 import { SectionHeading } from "@/components/SectionHeading";
-import { tripCodes } from "@/lib/codes";
+import { nearestAirport } from "@/lib/airports";
 import { departureCountdown, localDay } from "@/lib/dates";
 import { useFlash } from "@/lib/flash";
 import { prefersReducedMotion } from "@/lib/motion";
@@ -135,8 +135,6 @@ export function MyTrips() {
   }
 
   const { trips } = storage;
-  // Codes come from storage order, so they stay put when the sort changes.
-  const codes = tripCodes(trips);
   // Welcome back wins over the starter line. The time of day is only known in the
   // browser; until then the greeting's line keeps its place, empty.
   const readyAgain = now === null ? 0 : welcomeBackCount(trips, now);
@@ -161,7 +159,6 @@ export function MyTrips() {
               <li key={trip.id}>
                 <TripCard
                   trip={trip}
-                  code={codes.get(trip.id) ?? ""}
                   departure={trip.departsOn && now !== null ? departureCountdown(trip.departsOn, now) : null}
                 />
               </li>
@@ -204,12 +201,12 @@ function TripList({ children }: { children: ReactNode }) {
 
 // A trip's ticket, with today's weather where it's going: the same forecast its page
 // shows, so opening the trip asks Open-Meteo nothing more.
-function TripCard({ trip, code, departure }: { trip: Trip; code: string; departure: string | null }) {
+function TripCard({ trip, departure }: { trip: Trip; departure: string | null }) {
   const today = useForecast(trip.destination);
   return (
     <BoardingPassCard
       name={trip.name}
-      code={code}
+      airport={nearestAirport(trip.destination)}
       place={trip.destination ? placeLabel(trip.destination) : null}
       today={today}
       departure={departure}

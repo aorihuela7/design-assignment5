@@ -21,6 +21,8 @@ type WeatherProps = {
   onSetDestination: (destination: Destination | null) => Promise<boolean>;
   // Adds a suggestion the way the Add item form adds an item.
   onAdd: (name: string, section: Section) => Promise<SaveResult>;
+  // Opens the departure date form, as Trip options › Departure date does.
+  onAddDates: () => void;
   ref?: Ref<WeatherHandle>;
 };
 
@@ -35,7 +37,7 @@ const DETAILS_ID = "weather-details";
 // for them and the credit to Open-Meteo. Without a destination, an invitation to add
 // one. On a phone it's one block at the top that opens and closes; wider, it's always
 // open, beside the list.
-export function Weather({ trip, forecast, onSetDestination, onAdd, ref }: WeatherProps) {
+export function Weather({ trip, forecast, onSetDestination, onAdd, onAddDates, ref }: WeatherProps) {
   const { destination } = trip;
   const [changing, setChanging] = useState(false);
   // Once the person asks for the search (Change, Remove), its field takes focus.
@@ -187,6 +189,16 @@ export function Weather({ trip, forecast, onSetDestination, onAdd, ref }: Weathe
                 forecast.retry();
               }}
             />
+            {/* Without dates, say which days the board and the suggestions are for. */}
+            {forecast.status === "ready" && !trip.departsOn && (
+              <p className="text-sm text-muted">
+                Based on the next 7 days.{" "}
+                <TextButton inline onClick={onAddDates}>
+                  Add your dates
+                </TextButton>{" "}
+                to forecast your trip.
+              </p>
+            )}
             {forecast.status === "ready" && trip.departsOn && trip.departsOn > (forecast.days.at(-1)?.date ?? trip.departsOn) && (
               <p className="text-sm text-muted">
                 {formatCalendarDay(trip.departsOn)} is beyond the 16-day forecast. Check back nearer the day.

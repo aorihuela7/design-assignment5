@@ -438,3 +438,227 @@ Rename and Delete moved into a Trip options menu beside the title.
 - **Names that assume a light page break.** The focus ring was the band's navy, which would vanish on a dark page; it's ink now, a near-identical navy in the light theme and light at night. Delete trip's solid ink button had white text, which at night would be white on light; it takes the card's color instead. Clerk's Continue keeps white explicitly, since it sits on the accent.
 - **A check that reads one theme can't check two.** The contrast script collected every `--color-` value into one list, so dark overrides with the same names would have silently replaced the light ones. It now reads the light tokens and the dark overrides separately and runs every pair for each. All 24 required pairs pass in both; the lowest is white on the accent, 5.76:1 in both.
 - **Screens in dark, the same way as in light.** The screenshot script's browser takes `colorScheme: "dark"`, so `after-dark/` repeats every screen from the same starting point.
+
+## Assignment 4 feedback
+
+My professor's feedback on Assignment 4, fixed on the `assignment-5` branch before the live board. Screenshots of each fix, at 390 px and 1440 px, are in `docs/feedback/`.
+
+### Fix 1: the sign-in and sign-up pages
+
+**What my professor said.** The form takes less than a third of the screen and is neither centered nor left-aligned, so its placement feels random.
+
+**What changed.** Both pages now use one shared layout, `AuthLayout`, on the same grid as every page (the same width and side padding as the band above). On a wide screen it's two columns: a navy panel with the app's name, one line on what it does and a sample boarding pass, and Clerk's form centered in the other column. On a phone it's one column: the panel on top, without the sample pass, so the form stays near the top. Clerk's title said "Sign in to My Application", the name of the Clerk app this repo shares with Assignment 4; it's set to "Sign in to Pack Again" in our code instead, so Assignment 4 is untouched.
+
+**What I learned.**
+
+- **Placement has to come from a grid, not from the component.** Clerk's card has its own fixed width, so dropped into a page it sat wherever it landed. Giving it a column of its own and centering it there makes the position a decision.
+- **A ticket's notches assume the page behind it.** The pass's half-circle notches were drawn in the page color, so on the navy panel they showed as light dots. They now take `--notch`, which the panel sets to navy.
+
+### Fix 2: real airport codes
+
+**What my professor said.** The 3-letter codes look like airport codes, but they were made up from trip names (and city names), so they didn't mean anything.
+
+**What changed.** A trip's code is now the real code of its destination's nearest major airport, named beside it so it reads as an airport: "MAD · Madrid–Barajas", then the place on the line under it. Screen readers hear "Nearest airport: Madrid–Barajas (MAD)". The airports are a curated list of 136 in `src/lib/airports.ts` (the busiest, and each region's main hub, one per city), which the Live board will use too. The nearest is found by great-circle distance; with no destination, or nothing on the list within 150 km (Alice Springs, say), there's no code. The codes made from trip names are gone, and so is New trip's code preview, since a new trip has no destination yet.
+
+**What I learned.**
+
+- **A code that looks real has to be real.** Airport-style letters set up an expectation; letters from a trip's name broke it. A real code plus the airport's name keeps the Departures look and removes the guessing.
+- **Removing a feature removes its edge cases.** Name codes needed a uniqueness pass across all of a person's trips, in storage order, so they didn't change when the list was re-sorted. Airport codes depend only on the trip's own destination, so `tripCodes()` and its clash rules went away.
+- **Thresholds need a test case on both sides.** Toledo and Granada find MAD and AGP within 150 km; Alice Springs finds nothing, and its card shows only the place.
+
+### Fix 3: say which days the weather is for
+
+**What my professor said.** The weather suggestions don't say which days they're based on.
+
+**What changed.** A trip with no dates now says so plainly under the forecast board: "Based on the next 7 days. Add your dates to forecast your trip." "Add your dates" opens the departure date form (the same one as Trip options › Departure date), with focus in its field, so the line leads somewhere. Trips with a departure date are unchanged until fix 4, which makes the board and the suggestions follow the trip's own days.
+
+**What I learned.**
+
+- **The board's caption wasn't enough.** "Next 7 days" was there all along, but as the board's caption, and nothing joined it to the suggestions below. A sentence where the suggestions start says what they're based on, and what to do to change it.
+- **A hint should be a way forward.** Telling someone to add dates is more useful when the words themselves open the form.
+
+## Assignment 5, step 1: the live source
+
+> Call the live source twice for the area around Chicago O'Hare, about 3 minutes apart, show what changed, check its rate limits and terms, and recommend how often the worker should run and when an aircraft has "changed enough" to write it.
+
+### OpenSky first, then adsb.fi
+
+The plan was OpenSky. Two anonymous calls from my Mac (over a VPN; my own network couldn't reach it) worked, at 1 credit each for a 1°×1° box. The worker has to run on Supabase, though, and from a temporary Edge Function OpenSky timed out on every call. Its docs say it "may block AWS and other hyperscalers". From the same function, adsb.lol answered 429 on 2 of 3 calls, because Supabase's IP is shared with other projects. adsb.fi answered all 3, in about 140 ms. So the source is adsb.fi.
+
+### Two calls to adsb.fi
+
+`GET https://opendata.adsb.fi/api/v3/lat/41.974/lon/-87.907/dist/30`: aircraft within 30 NM of O'Hare, on 3 Nov 2026 at 07:51:25 and 07:54:25 UTC.
+
+| Call | HTTP | Size | Time | Aircraft |
+|---|---|---|---|---|
+| 1 | 200 | 4,894 B | 0.21 s | 9 |
+| 2 | 200 | 3,671 B | 0.24 s | 7 |
+
+**The fields we'd use, with their units** (from readsb's JSON format, which adsb.fi follows):
+
+| Field | Example | Meaning |
+|---|---|---|
+| `hex` | `781273` | the transponder's ICAO address: the aircraft's key |
+| `flight` | `"YZR7451 "` | callsign, padded to 8 characters; missing for some aircraft on the ground |
+| `r`, `t`, `desc` | `B-1340`, `B744`, "BOEING 747-400" | registration and type, from adsb.fi's database |
+| `alt_baro` | `4100`, or `"ground"` | barometric altitude in **feet**, or the string `"ground"` on the ground |
+| `alt_geom` | `4050` | GPS altitude in feet |
+| `gs` | `247.5` | ground speed in **knots** |
+| `track` | `148.04` | direction of travel, degrees from true north |
+| `baro_rate` / `geom_rate` | `-832` | climb (+) or descent (−) in **feet per minute** |
+| `lat`, `lon` | `42.0218`, `-88.3581` | position |
+| `seen` / `seen_pos` | `0.0` / `0.266` | **seconds** since the last message / the last position |
+| `dst` / `dir` | `20.288` / `278.3` | distance from the point asked about, in **nautical miles**, and its bearing in degrees |
+
+**What changed in 180 s:**
+
+- **Appeared (1):** CAL5235, a Boeing 777F on the ground 1.2 NM out, at 1.6 kt.
+- **Left (3):** AMX689 at 14,200 ft and GTI9013 at 16,025 ft, both climbing out past 30 NM. And N891NN, a 737 taxiing at 0.9 NM: it can't have left the airport in 3 minutes, so ground coverage dropped it.
+- **Stayed (6):**
+
+| Aircraft | Altitude (ft) | Speed (kt) | Distance (NM) | |
+|---|---|---|---|---|
+| AFR6733 (777F) | 1,350 → 9,075 | 182 → 312 | 0.8 → 10.7 | took off, climbing |
+| YZR7451 (747) | 4,100 → 3,275 | 248 → 216 | 20.3 → 9.1 | arriving, descending |
+| GTX508 (Bonanza) | 2,600 → 4,900 | 78 → 95 | 3.4 → 7.4 | climbing |
+| LBQ650 (PC-12) | 5,975 → 4,950 | 241 → 272 | 12.9 → 8.8 | descending |
+| AAL2409 (A319) | ground → ground | 0 → 0 | 0.46 → 0.46 | parked, unchanged |
+| N14539 (A321neo) | ground → ground | 0 → 0 | 0.09 → 0.09 | parked, unchanged (no callsign; position 38–45 s old) |
+
+### Rate limits and terms
+
+From adsb.fi's open data README (github.com/adsbfi/opendata):
+
+- **Rate limit:** public endpoints allow 1 request per second. The point query reaches up to 250 NM.
+- **No key, and no rate-limit headers:** the response says nothing about the limit. A 429 is the only signal.
+- **Temporary IP block:** "Requests returning a 400, 401, 403, 404, or 429 status code count toward the limit." Supabase's IP is shared, so the worker must never retry in a loop.
+- **Terms:** "adsb.fi open data is for personal, non-commercial use only", provided as-is. "You must cite adsb.fi and include a link to our home page."
+
+### Recommendations
+
+- **Run every minute.** There are no daily credits; what limits us is adsb.fi's 1 request per second and Supabase's 500,000 Edge Function calls a month. Once a minute is 44,640 calls a month, about 9% of that. In one minute an arriving airliner moves about 4 NM, so the board changes every run without falling behind. One call per airport that anyone follows, at least 1.1 s apart. Skip the call when nobody follows anything, and stop the run at the first 429.
+- **Save:**
+  - `hex` (the key) and the airport code
+  - `flight` (trimmed), `r`, `t`
+  - `alt_baro` as whole feet, plus `on_ground` (true when it's `"ground"`)
+  - `gs`, `baro_rate` (or `geom_rate`), `track`, `dst`, `dir`, `lat`, `lon`
+  - when it was seen (`now − seen_pos`)
+  - a phase worked out from those: parked, taxiing, climbing, descending or cruising
+- **Don't save** the signal-quality fields (`nic`, `nac_*`, `sil`, `rssi`, `messages`, and so on), `nav_*`, `squawk`, `desc`, `ownOp` or `year`.
+- **"Changed enough" means what the board shows changed.** Write an aircraft only when one of these is different:
+  - its phase or `on_ground`
+  - its altitude rounded to 100 ft
+  - its speed rounded to 10 kt
+  - its distance rounded to 0.5 NM
+  - its callsign
+
+  Insert new aircraft. Delete one only after it has been missing for 2 runs in a row, so a ground coverage gap like N891NN's doesn't delete and re-add it. In this sample, the two parked aircraft would not be written at all. At a busy airport, much of the traffic on the ground would be skipped like that.
+- **Realtime:** send one message per airport per run, and only when something changed there, not one per aircraft.
+
+### What I learned
+
+- **Test where the code will run.** OpenSky worked from my Mac over a VPN and never from Supabase. A source is only usable if the worker's own servers can reach it.
+- **A shared IP shares its limits.** adsb.lol's 429s weren't caused by our traffic, and adsb.fi counts errors toward blocking the IP. Retrying in a loop could get Supabase's address blocked for everyone using it.
+- **"Changed" should mean "looks different".** Comparing the values the board actually shows, rounded, avoids rewriting rows when a number only moved in its decimals.
+
+## Assignment 5, step 2: the tools
+
+> Confirm each tool works: the Supabase MCP in write mode, pg_cron and pg_net, the Clerk CLI, the Vercel preview for this branch, the Playwright MCP, and origin/HEAD.
+
+Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
+
+| Tool | What it's for | Works? |
+|---|---|---|
+| Supabase MCP, write mode | Apply migrations, deploy Edge Functions, set secrets, run SQL from the agent | **Yes,** once I turned off `read_only` and reconnected it. Its write tools are loaded: `apply_migration`, `execute_sql`, `deploy_edge_function`, `create_edge_function_secret`. It has no tool to delete a function or a secret, so those stay dashboard tasks. |
+| pg_cron | Supabase Cron: runs the worker every minute | **Yes,** 1.6.4, in `pg_catalog`. It was available but not enabled; I approved the migration `20261103082930_enable_pg_cron_and_pg_net`, applied with the MCP. |
+| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Yes,** 0.20.4, in `extensions`, from the same migration. |
+| Clerk CLI (`clerk`, from npm) | Manage the Clerk app and test users from the terminal | **Yes,** v4.1.0 through `npx clerk`, once I allowed it in `.claude/settings.local.json`. It's logged in with my account, but not yet linked to this project's Clerk app (`clerk link`). |
+| Vercel preview | A deploy of this branch to test before merging | **Yes.** Vercel built `07668e5` ("Deployment has completed") at `design-assignment5-git-assignment-5-alejandro-6aea.vercel.app`. Deployment Protection keeps it behind a Vercel login. |
+| Playwright MCP | Drive a real browser: check pages and take screenshots | **Yes.** It opened adsb.fi, read its open data README and opened the preview. |
+| Playwright (test runner) | The end-to-end isolation test | **Yes.** It passed after each of fixes 1 to 3. |
+| `origin/HEAD` | The default branch git compares against | **Yes.** It points to `origin/main`. |
+| GitHub CLI (`gh`) | Commit statuses and deployments | **Yes.** It's how the Vercel status above was read. |
+| Supabase Edge Functions (dashboard) | Where the worker will run | **Yes.** The temporary `opensky-probe` was deployed from the dashboard, reached adsb.fi, and is deleted now. A leftover from the first attempt, `dynamic-service`, is still deployed. |
+
+### What I learned
+
+- **A config file isn't a working tool.** The Supabase MCP was configured from the start, but it was read-only and not connected to the agent, so it couldn't do anything until I reconnected it. Checking a tool means using it, not reading its settings.
+- **Write access should be a choice.** Turning off `read_only` gives the agent the shared production database, which Assignment 4 still uses. That's for me to do, not for the agent to switch on itself.
+
+## Assignment 5: what I caught
+
+### The agent listed everyone's emails
+
+**What happened.** To sign in to the Live board as test user A with the Playwright MCP, the agent needed that user's email. It ran the Clerk CLI's `users list`, which printed the id and email address of every user in the Clerk app, including classmates who had signed up for Assignment 4. It used only the test user's, but the other addresses were already in its output.
+
+**What changed.** AGENTS.md now says: never list or read other people's personal data (emails, names) from Clerk or the database; use only the test users, whose emails are written there. To check something as a person, the agent signs in as test user A or B, or simulates them in SQL by their known id.
+
+**What I learned.**
+
+- **A lookup can leak more than it finds.** Asking "who is the test user?" with a command that lists everyone exposes everyone. The safe way is to already know the one record you need.
+- **Personal data rules cover tools, not just code.** The app's own rules (RLS, no anon access) protected the data in the app. But the agent's CLI access to Clerk went around all of them, so the rule has to be written for the agent too.
+
+## Assignment 5: one update, from the source to the screen
+
+> Trace one update for me, from the source to my screen, and name every part it passes through.
+
+One real update, on 3 Nov 2026: **UAL2652**, a Boeing 737-900 arriving at O'Hare, 0.8 NM out at 775 ft and 162 kt. It was written in worker run 188. The times in bold were read from the database afterwards; the browser's part follows the same path every update takes, but wasn't timed for this one.
+
+**At the source**
+
+1. **The aircraft's transponder** (ADS-B Out) broadcasts its position, altitude and speed on 1090 MHz, about twice a second. Nobody asks it to; it always does.
+2. **adsb.fi's receivers,** run by volunteers on the ground near O'Hare, pick up those broadcasts and send them to **adsb.fi's servers**, which merge them into one picture of the sky. adsb.fi last had UAL2652's position at **21:39:03.822 UTC**.
+
+**In Supabase: the worker's run**
+
+3. **Supabase Cron (pg_cron),** inside our Postgres database, starts the job `live-board-worker` on its 10-second schedule, at **21:39:04.442**.
+4. **Supabase Vault:** the job reads `worker_secret` from `vault.decrypted_secrets`. The secret is never in the job's text, a migration or a commit.
+5. **pg_net** turns the job's `net.http_post` into an HTTP request and sends it from a background worker, so the cron job itself finishes in 5 ms.
+6. **The Edge Functions gateway** routes the request to the **`worker` Edge Function**, a Deno isolate. Verify JWT is off, because the function checks the `x-worker-secret` header against its own `WORKER_SECRET` secret and refuses anything else. Run 188 starts at **21:39:04.582**, 140 ms after the cron job.
+7. **Supabase's REST API (PostgREST),** called by supabase-js with the secret key Supabase gives its own functions (`SUPABASE_SECRET_KEYS`): the worker reads which airports anyone follows (ORD, MRU) and each airport's last check. The secret key bypasses RLS, and it never leaves Supabase.
+8. **adsb.fi's open data API,** behind Cloudflare: `GET /api/v3/lat/41.974/lon/-87.907/dist/30` returns every aircraft within 30 NM of O'Hare, UAL2652 among them, its position 0.6 s old.
+9. **The worker's rules** (`logic.ts`): `toRow()` turns adsb.fi's fields into a row (feet, knots, nautical miles), and `statusOf()` calls UAL2652 "arriving" (below 10,000 ft, descending). Then `shown()` compares it with the row saved 10 s earlier, rounded as the board shows it. Its altitude, speed and distance had changed enough, so it's written; parked aircraft aren't.
+10. **PostgREST, then Postgres:** the worker upserts the changed aircraft into `public.aircraft`. UAL2652's row has `updated_at` **21:39:06.515**, 2.7 s after adsb.fi saw it. Then it writes ORD's row in `public.airport_updates`, with `changed` set to the number of aircraft written or deleted. Run 188 ends after 2,168 ms (both airports, 1.1 s apart), with 43 rows changed, and records itself in `public.worker_runs`.
+
+**From the database to the screen**
+
+11. **Postgres's write-ahead log** records the change. Supabase **Realtime** reads it through logical replication, but only for tables in the `supabase_realtime` publication. That's just `airport_updates`, so the aircraft rows themselves send nothing.
+12. **Realtime checks who may receive it.** My open page has a channel for `airport_updates` with the filter `airport_code=in.(ORD,MRU)`. That channel was joined with my **Clerk session token**, which supabase-js passes on connect and renews on every heartbeat. Realtime applies the table's RLS select policy as `authenticated` with that token, so I'm allowed. A signed-out visitor, or a page without the token, would get nothing, silently.
+13. **A WebSocket message** (`wss://…supabase.co/realtime/v1`) carries ORD's new row to my browser.
+14. **`useLiveBoard()`** (`src/lib/live.ts`) gets it in the channel's callback and stores ORD's new check. Because `changed` is above 0, it asks for ORD's aircraft again.
+15. **Clerk** gives the browser a fresh session token (`getToken()`, valid 60 s).
+16. **PostgREST, with my token:** `GET /rest/v1/aircraft?airport_code=in.(ORD)`, with the publishable key and `Authorization: Bearer` that token. Supabase checks the token's signature with Clerk's public key (third-party auth), and the aircraft table's RLS lets any signed-in person read it. The response's `Date` header also updates the page's idea of Supabase's clock.
+17. **React** puts the new rows in state. `AirportBoard` sorts them (arriving first, nearest first), so UAL2652, the nearest arrival, sits at the top. In its row, each value that changed flips once through `FlipText` (200 ms, not with reduced motion). "Updated 0 s ago" is worked out from ORD's `checked_at` and Supabase's clock, not my device's. The polite live region stays quiet: ORD was fresh before and is fresh now, so there's no change of state to announce.
+
+**Not on the path:** Vercel and our Next.js server. They served the page's HTML and JavaScript once, when I opened it, and `proxy.ts` checked I was signed in then. After that, every update goes from Supabase straight to the browser.
+
+### What I learned
+
+- **Two kinds of "live".** The worker pulls from adsb.fi on a schedule (every 10 s); Realtime pushes from the database to the page the moment a row changes. The page is as fresh as the worker's last run, plus a fraction of a second.
+- **Every hop has its own credentials.** Cron uses a secret from Vault. The worker uses Supabase's secret key, which never leaves Supabase. The browser uses only the publishable key and my Clerk token, and RLS decides what that token can see, on REST and on Realtime alike.
+- **Sending a signal, not the data, keeps it cheap.** One small `airport_updates` message per airport per run tells the page to look again. The 40-odd aircraft rows come only when something changed, and only for the airport that changed.
+
+## Assignment 5: security review
+
+> Run /security-review on the branch, and fix what it finds.
+
+**What it found.** No vulnerabilities. Nothing reached the review's bar: high confidence and a concrete way to exploit it. It checked:
+
+- **The tables' rules:** row-level security and grants on the four new tables.
+- **The follow limit:** the 3-follow trigger can't be bypassed or called through the API.
+- **Realtime:** it only sends to signed-in people allowed by those rules.
+- **The worker:** its `WORKER_SECRET` check with Verify JWT off, and its error messages, which never include a URL, header or key.
+- **Injection:** none in the worker's queries or in its adsb.fi address.
+- **pg_cron, pg_net and Vault:** none of them is reachable through the API.
+- **The browser:** it only ever has the publishable key and the Clerk token.
+- **XSS:** none in the new pages.
+
+**What we fixed.** Nothing: there was nothing to fix.
+
+**What we didn't fix, and why.** One observation fell below the bar. Any signed-in person can read `airport_updates` and `aircraft`, so they can tell that *someone* follows ORD or MRU, though not who. We left it as it is:
+
+- **The data is public:** live air traffic, which anyone can see on adsb.fi itself.
+- **Nothing personal is exposed:** `follows` is protected by its own rules, and no user id, name or email is in those tables.
+- **The fix would cost something:** limiting each person to the airports they follow would add a follow check on every row read and on every Realtime message, for very little protection.
+
+If the app grew and which airports people follow became sensitive, the fix is a select policy on both tables that checks `follows` for the person's own id. Realtime would apply it too, so the page wouldn't need to change.
