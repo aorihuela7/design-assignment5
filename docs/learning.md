@@ -465,3 +465,14 @@ My professor's feedback on Assignment 4, fixed on the `assignment-5` branch befo
 - **A code that looks real has to be real.** Airport-style letters set up an expectation; letters from a trip's name broke it. A real code plus the airport's name keeps the Departures look and removes the guessing.
 - **Removing a feature removes its edge cases.** Name codes needed a uniqueness pass across all of a person's trips, in storage order, so they didn't change when the list was re-sorted. Airport codes depend only on the trip's own destination, so `tripCodes()` and its clash rules went away.
 - **Thresholds need a test case on both sides.** Toledo and Granada find MAD and AGP within 150 km; Alice Springs finds nothing, and its card shows only the place.
+
+### Fix 3: say which days the weather is for
+
+**What my professor said.** The weather suggestions don't say which days they're based on.
+
+**What changed.** A trip with no dates now says so plainly under the forecast board: "Based on the next 7 days. Add your dates to forecast your trip." "Add your dates" opens the departure date form (the same one as Trip options › Departure date), with focus in its field, so the line leads somewhere. Trips with a departure date are unchanged until fix 4, which makes the board and the suggestions follow the trip's own days.
+
+**What I learned.**
+
+- **The board's caption wasn't enough.** "Next 7 days" was there all along, but as the board's caption, and nothing joined it to the suggestions below. A sentence where the suggestions start says what they're based on, and what to do to change it.
+- **A hint should be a way forward.** Telling someone to add dates is more useful when the words themselves open the form.
