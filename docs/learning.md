@@ -597,3 +597,43 @@ Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
 
 - **A lookup can leak more than it finds.** Asking "who is the test user?" with a command that lists everyone exposes everyone. The safe way is to already know the one record you need.
 - **Personal data rules cover tools, not just code.** The app's own rules (RLS, no anon access) protected the data in the app. But the agent's CLI access to Clerk went around all of them, so the rule has to be written for the agent too.
+
+## Assignment 5: one update, from the source to the screen
+
+> Trace one update for me, from the source to my screen, and name every part it passes through.
+
+One real update, on 3 Nov 2026: **UAL2652**, a Boeing 737-900 arriving at O'Hare, 0.8 NM out at 775 ft and 162 kt. It was written in worker run 188. The times in bold were read from the database afterwards; the browser's part follows the same path every update takes, but wasn't timed for this one.
+
+**At the source**
+
+1. **The aircraft's transponder** (ADS-B Out) broadcasts its position, altitude and speed on 1090 MHz, about twice a second. Nobody asks it to; it always does.
+2. **adsb.fi's receivers,** run by volunteers on the ground near O'Hare, pick up those broadcasts and send them to **adsb.fi's servers**, which merge them into one picture of the sky. adsb.fi last had UAL2652's position at **21:39:03.822 UTC**.
+
+**In Supabase: the worker's run**
+
+3. **Supabase Cron (pg_cron),** inside our Postgres database, starts the job `live-board-worker` on its 10-second schedule, at **21:39:04.442**.
+4. **Supabase Vault:** the job reads `worker_secret` from `vault.decrypted_secrets`. The secret is never in the job's text, a migration or a commit.
+5. **pg_net** turns the job's `net.http_post` into an HTTP request and sends it from a background worker, so the cron job itself finishes in 5 ms.
+6. **The Edge Functions gateway** routes the request to the **`worker` Edge Function**, a Deno isolate. Verify JWT is off, because the function checks the `x-worker-secret` header against its own `WORKER_SECRET` secret and refuses anything else. Run 188 starts at **21:39:04.582**, 140 ms after the cron job.
+7. **Supabase's REST API (PostgREST),** called by supabase-js with the secret key Supabase gives its own functions (`SUPABASE_SECRET_KEYS`): the worker reads which airports anyone follows (ORD, MRU) and each airport's last check. The secret key bypasses RLS, and it never leaves Supabase.
+8. **adsb.fi's open data API,** behind Cloudflare: `GET /api/v3/lat/41.974/lon/-87.907/dist/30` returns every aircraft within 30 NM of O'Hare, UAL2652 among them, its position 0.6 s old.
+9. **The worker's rules** (`logic.ts`): `toRow()` turns adsb.fi's fields into a row (feet, knots, nautical miles), and `statusOf()` calls UAL2652 "arriving" (below 10,000 ft, descending). Then `shown()` compares it with the row saved 10 s earlier, rounded as the board shows it. Its altitude, speed and distance had changed enough, so it's written; parked aircraft aren't.
+10. **PostgREST, then Postgres:** the worker upserts the changed aircraft into `public.aircraft`. UAL2652's row has `updated_at` **21:39:06.515**, 2.7 s after adsb.fi saw it. Then it writes ORD's row in `public.airport_updates`, with `changed` set to the number of aircraft written or deleted. Run 188 ends after 2,168 ms (both airports, 1.1 s apart), with 43 rows changed, and records itself in `public.worker_runs`.
+
+**From the database to the screen**
+
+11. **Postgres's write-ahead log** records the change. Supabase **Realtime** reads it through logical replication, but only for tables in the `supabase_realtime` publication. That's just `airport_updates`, so the aircraft rows themselves send nothing.
+12. **Realtime checks who may receive it.** My open page has a channel for `airport_updates` with the filter `airport_code=in.(ORD,MRU)`. That channel was joined with my **Clerk session token**, which supabase-js passes on connect and renews on every heartbeat. Realtime applies the table's RLS select policy as `authenticated` with that token, so I'm allowed. A signed-out visitor, or a page without the token, would get nothing, silently.
+13. **A WebSocket message** (`wss://…supabase.co/realtime/v1`) carries ORD's new row to my browser.
+14. **`useLiveBoard()`** (`src/lib/live.ts`) gets it in the channel's callback and stores ORD's new check. Because `changed` is above 0, it asks for ORD's aircraft again.
+15. **Clerk** gives the browser a fresh session token (`getToken()`, valid 60 s).
+16. **PostgREST, with my token:** `GET /rest/v1/aircraft?airport_code=in.(ORD)`, with the publishable key and `Authorization: Bearer` that token. Supabase checks the token's signature with Clerk's public key (third-party auth), and the aircraft table's RLS lets any signed-in person read it. The response's `Date` header also updates the page's idea of Supabase's clock.
+17. **React** puts the new rows in state. `AirportBoard` sorts them (arriving first, nearest first), so UAL2652, the nearest arrival, sits at the top. In its row, each value that changed flips once through `FlipText` (200 ms, not with reduced motion). "Updated 0 s ago" is worked out from ORD's `checked_at` and Supabase's clock, not my device's. The polite live region stays quiet: ORD was fresh before and is fresh now, so there's no change of state to announce.
+
+**Not on the path:** Vercel and our Next.js server. They served the page's HTML and JavaScript once, when I opened it, and `proxy.ts` checked I was signed in then. After that, every update goes from Supabase straight to the browser.
+
+### What I learned
+
+- **Two kinds of "live".** The worker pulls from adsb.fi on a schedule (every 10 s); Realtime pushes from the database to the page the moment a row changes. The page is as fresh as the worker's last run, plus a fraction of a second.
+- **Every hop has its own credentials.** Cron uses a secret from Vault. The worker uses Supabase's secret key, which never leaves Supabase. The browser uses only the publishable key and my Clerk token, and RLS decides what that token can see, on REST and on Realtime alike.
+- **Sending a signal, not the data, keeps it cheap.** One small `airport_updates` message per airport per run tells the page to look again. The 40-odd aircraft rows come only when something changed, and only for the airport that changed.
