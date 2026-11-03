@@ -40,6 +40,7 @@ This repo shares the Supabase project and the Clerk app with Assignment 4, whose
 - Every table holding someone's data has a `user_id` column and row-level security.
 - A signed-out visitor sees no one's data.
 - Never use the Supabase secret key in the browser.
+- Never list or read other people's personal data (emails, names) from Clerk or the database; use only the test users (`pack-again-e2e-a+clerk_test@example.com` and `pack-again-e2e-b+clerk_test@example.com`).
 
 ## Data model
 Supabase Postgres, migrations in `supabase/migrations/`, diagram in `docs/data-model.md`.

@@ -584,3 +584,16 @@ Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
 
 - **A config file isn't a working tool.** The Supabase MCP was configured from the start, but it was read-only and not connected to the agent, so it couldn't do anything until I reconnected it. Checking a tool means using it, not reading its settings.
 - **Write access should be a choice.** Turning off `read_only` gives the agent the shared production database, which Assignment 4 still uses. That's for me to do, not for the agent to switch on itself.
+
+## Assignment 5: what I caught
+
+### The agent listed everyone's emails
+
+**What happened.** To sign in to the Live board as test user A with the Playwright MCP, the agent needed that user's email. It ran the Clerk CLI's `users list`, which printed the id and email address of every user in the Clerk app, including classmates who had signed up for Assignment 4. It used only the test user's, but the other addresses were already in its output.
+
+**What changed.** AGENTS.md now says: never list or read other people's personal data (emails, names) from Clerk or the database; use only the test users, whose emails are written there. To check something as a person, the agent signs in as test user A or B, or simulates them in SQL by their known id.
+
+**What I learned.**
+
+- **A lookup can leak more than it finds.** Asking "who is the test user?" with a command that lists everyone exposes everyone. The safe way is to already know the one record you need.
+- **Personal data rules cover tools, not just code.** The app's own rules (RLS, no anon access) protected the data in the app. But the agent's CLI access to Clerk went around all of them, so the rule has to be written for the agent too.
