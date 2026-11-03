@@ -569,18 +569,18 @@ Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
 
 | Tool | What it's for | Works? |
 |---|---|---|
-| Supabase MCP, write mode | Apply migrations, deploy and delete Edge Functions, set secrets, run SQL from the agent | **No.** `.mcp.json` still has `read_only=true`, and the server's tools aren't loaded in the agent's session, so nothing can be written through it yet. |
-| pg_cron | Supabase Cron: runs the worker every minute | **Not checked.** It needs the MCP or a database connection, and neither was available. |
-| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Not checked**, for the same reason. |
-| Clerk CLI (`clerk`, from npm) | Manage the Clerk app and test users from the terminal | **No.** Not installed. Running it with `npx` (which downloads and runs it) was refused by the agent's permission check. |
+| Supabase MCP, write mode | Apply migrations, deploy Edge Functions, set secrets, run SQL from the agent | **Yes,** once I turned off `read_only` and reconnected it. Its write tools are loaded: `apply_migration`, `execute_sql`, `deploy_edge_function`, `create_edge_function_secret`. It has no tool to delete a function or a secret, so those stay dashboard tasks. |
+| pg_cron | Supabase Cron: runs the worker every minute | **Available, not enabled.** Version 1.6.4 can be installed. Enabling it is a migration (`create extension`), so it waits for my approval. |
+| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Available, not enabled.** Version 0.20.4, same as pg_cron. |
+| Clerk CLI (`clerk`, from npm) | Manage the Clerk app and test users from the terminal | **Yes,** v4.1.0 through `npx clerk`, once I allowed it in `.claude/settings.local.json`. It's logged in with my account, but not yet linked to this project's Clerk app (`clerk link`). |
 | Vercel preview | A deploy of this branch to test before merging | **Yes.** Vercel built `07668e5` ("Deployment has completed") at `design-assignment5-git-assignment-5-alejandro-6aea.vercel.app`. Deployment Protection keeps it behind a Vercel login. |
 | Playwright MCP | Drive a real browser: check pages and take screenshots | **Yes.** It opened adsb.fi, read its open data README and opened the preview. |
 | Playwright (test runner) | The end-to-end isolation test | **Yes.** It passed after each of fixes 1 to 3. |
 | `origin/HEAD` | The default branch git compares against | **Yes.** It points to `origin/main`. |
 | GitHub CLI (`gh`) | Commit statuses and deployments | **Yes.** It's how the Vercel status above was read. |
-| Supabase Edge Functions (dashboard) | Where the worker will run | **Yes.** The temporary `opensky-probe` was deployed from the dashboard and reached adsb.fi. |
+| Supabase Edge Functions (dashboard) | Where the worker will run | **Yes.** The temporary `opensky-probe` was deployed from the dashboard, reached adsb.fi, and is deleted now. A leftover from the first attempt, `dynamic-service`, is still deployed. |
 
 ### What I learned
 
-- **A config file isn't a working tool.** The Supabase MCP is configured, but it's read-only and not connected to the agent, so in practice it can't do anything yet. Checking means using it, not reading its settings.
+- **A config file isn't a working tool.** The Supabase MCP was configured from the start, but it was read-only and not connected to the agent, so it couldn't do anything until I reconnected it. Checking a tool means using it, not reading its settings.
 - **Write access should be a choice.** Turning off `read_only` gives the agent the shared production database, which Assignment 4 still uses. That's for me to do, not for the agent to switch on itself.
