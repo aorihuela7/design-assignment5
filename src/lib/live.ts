@@ -66,7 +66,9 @@ export function previewState(): "stale" | "down" | null {
 
 export type AirportState =
   | { kind: "waiting" }
-  | { kind: "fresh" | "empty" | "stale"; ageMs: number }
+  | { kind: "fresh"; ageMs: number }
+  | { kind: "empty"; ageMs: number }
+  | { kind: "stale"; ageMs: number }
   | { kind: "down"; ageMs: number; reason: "failed" | "no checks" };
 
 // What an airport's panel shows, from its last check and Supabase's time now.
@@ -77,7 +79,7 @@ export function airportState(check: AirportCheck | undefined, serverNowMs: numbe
   if (ageMs > DOWN_AFTER_MS) return { kind: "down", ageMs, reason: "no checks" };
   if (preview === "stale") return { kind: "stale", ageMs: ageMs + STALE_AFTER_MS };
   if (ageMs > STALE_AFTER_MS) return { kind: "stale", ageMs };
-  return { kind: check.aircraft_count === 0 ? "empty" : "fresh", ageMs };
+  return check.aircraft_count === 0 ? { kind: "empty", ageMs } : { kind: "fresh", ageMs };
 }
 
 // Arriving and departing first, then on the ground, then overflying; nearest first.
@@ -170,6 +172,25 @@ export function useLiveBoard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  // A dropped connection shows straight away: the browser says when it goes offline,
+  // and Realtime's heartbeat (every 25 s) when the socket stops answering. Back
+  // online, a new channel is made (attempt), which catches up when it's subscribed.
+  useEffect(() => {
+    if (!db) return;
+    const lost = () => setConnection("reconnecting");
+    const found = () => setAttempt((n) => n + 1);
+    window.addEventListener("offline", lost);
+    window.addEventListener("online", found);
+    db.realtime.onHeartbeat((status) => {
+      if (status === "timeout" || status === "error") lost();
+    });
+    return () => {
+      window.removeEventListener("offline", lost);
+      window.removeEventListener("online", found);
+      db.realtime.onHeartbeat(() => {});
+    };
+  }, [db]);
 
   // Realtime: only airport_updates, only the followed airports. A new subscription
   // whenever the follows change, or after a drop (attempt).
