@@ -570,8 +570,8 @@ Checked 3 Nov 2026, after pushing `assignment-5` at `07668e5`.
 | Tool | What it's for | Works? |
 |---|---|---|
 | Supabase MCP, write mode | Apply migrations, deploy Edge Functions, set secrets, run SQL from the agent | **Yes,** once I turned off `read_only` and reconnected it. Its write tools are loaded: `apply_migration`, `execute_sql`, `deploy_edge_function`, `create_edge_function_secret`. It has no tool to delete a function or a secret, so those stay dashboard tasks. |
-| pg_cron | Supabase Cron: runs the worker every minute | **Available, not enabled.** Version 1.6.4 can be installed. Enabling it is a migration (`create extension`), so it waits for my approval. |
-| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Available, not enabled.** Version 0.20.4, same as pg_cron. |
+| pg_cron | Supabase Cron: runs the worker every minute | **Yes,** 1.6.4, in `pg_catalog`. It was available but not enabled; I approved the migration `20261103082930_enable_pg_cron_and_pg_net`, applied with the MCP. |
+| pg_net | Lets the cron job call the worker's Edge Function over HTTP | **Yes,** 0.20.4, in `extensions`, from the same migration. |
 | Clerk CLI (`clerk`, from npm) | Manage the Clerk app and test users from the terminal | **Yes,** v4.1.0 through `npx clerk`, once I allowed it in `.claude/settings.local.json`. It's logged in with my account, but not yet linked to this project's Clerk app (`clerk link`). |
 | Vercel preview | A deploy of this branch to test before merging | **Yes.** Vercel built `07668e5` ("Deployment has completed") at `design-assignment5-git-assignment-5-alejandro-6aea.vercel.app`. Deployment Protection keeps it behind a Vercel login. |
 | Playwright MCP | Drive a real browser: check pages and take screenshots | **Yes.** It opened adsb.fi, read its open data README and opened the preview. |
