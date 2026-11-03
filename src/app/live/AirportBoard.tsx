@@ -6,6 +6,7 @@ import { FlipText } from "@/components/FlipText";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TextButton } from "@/components/TextLink";
 import type { Airport } from "@/lib/airports";
+import { airlineOf, typeName } from "@/lib/aircraft";
 import { Radar } from "./Radar";
 import { ago, boardOrder, RADIUS_NM, STATUS_ORDER, type AircraftStatus, type AirportState, type LiveAircraft } from "@/lib/live";
 
@@ -104,7 +105,7 @@ function Freshness({ code, state }: { code: string; state: AirportState }) {
   );
 }
 
-const cell = "h-11 px-1.5 first:pl-0 last:pr-0 @md:px-3";
+const cell = "h-11 px-1 first:pl-0 last:pr-0 @md:px-3";
 const number = "text-right whitespace-nowrap";
 
 // Navy and amber, like the band and the weather board. A table: a caption with the
@@ -160,12 +161,27 @@ function ColumnHeading({ short, full }: { short: string; full: string }) {
 }
 
 function AircraftRow({ row }: { row: LiveAircraft }) {
+  const airline = airlineOf(row.callsign);
+  const type = typeName(row.type);
   return (
     <tr>
-      <th scope="row" className={`${cell} text-left font-normal whitespace-nowrap`}>
+      <th scope="row" className={`${cell} py-1.5 text-left font-normal`}>
         <span className="flex flex-col leading-tight">
-          <span>{row.callsign ?? "No callsign"}</span>
-          {row.type && <span className="text-white">{row.type}</span>}
+          <span className="whitespace-nowrap">{row.callsign ?? "No callsign"}</span>
+          {(airline || type) && (
+            // Narrow, so on a phone it wraps under the callsign rather than widening the board.
+            <span className="max-w-36 text-[0.7rem] normal-case tracking-normal text-white @md:max-w-none @md:whitespace-nowrap">
+              {airline && (
+                <>
+                  {/* The flag is for the eye; the airline's name says it. */}
+                  <span aria-hidden="true">{airline.flag} </span>
+                  {airline.name}
+                  {type && " · "}
+                </>
+              )}
+              {type}
+            </span>
+          )}
         </span>
       </th>
       <td className={cell}>
