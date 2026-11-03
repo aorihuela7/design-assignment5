@@ -83,14 +83,14 @@ Purposeful and quick (150 to 300ms) and never blocking input, using CSS, the Web
 ## Docs
 README.md must show the flows diagram and the first-run usability check.
 
-<!-- BEGIN:nextjs-agent-rules -->
-
 ## Feedback to address
-My professor's feedback on Assignment 4. Fixes 1 to 3 come first; fix 4 waits for my decision. After each fix: build, lint, the Playwright isolation test, screenshots at 390px and 1440px, a commit, and a note in `docs/learning.md` of what was said and what we changed.
+My professor's feedback on Assignment 4. Fixes 1 to 3 come first; fix 4 comes after the worker is running (about 2 h, with a return date). After each fix: build, lint, the Playwright isolation test, screenshots at 390px and 1440px, a commit, and a note in `docs/learning.md` of what was said and what we changed.
 1. **Sign-in and sign-up pages.** The form takes less than a third of the screen and is neither centered nor left-aligned, so the placement feels random. Fix: on desktop, two columns, with a navy brand panel on the left (the app name, one line on what it does, and a sample boarding pass) and the Clerk form centered vertically and horizontally on the right; on mobile, one column with the band on top. Everything aligned to the same page grid.
 2. **The 3-letter codes.** They look like airport codes but are made up from trip names, so they weren't understood. Fix: show the real code of the nearest major airport to the trip's destination (Madrid → MAD), labeled so it reads as an airport, from a small curated list of major airports in the code (the same list the Live board uses). With no destination, or no major airport within about 150 km, show no code.
 3. **Weather without dates.** The suggestions don't say which days they're based on. Fix: without trip dates, say so plainly: "Based on the next 7 days. Add your dates to forecast your trip."
 4. **Weather with dates.** After adding dates, the weather didn't change to the trip's days. Fix: if the trip's dates are within the 16-day forecast range, show the forecast for those days and base the suggestions on them; if the trip starts later, say when the forecast will be available ("Forecast available from Nov 20") and fall back to the next 7 days, labeled as such. If only a departure date exists, propose an optional return date as a new nullable column on `trips`, show the SQL and wait.
+
+<!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
 
