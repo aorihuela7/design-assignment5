@@ -637,3 +637,28 @@ One real update, on 3 Nov 2026: **UAL2652**, a Boeing 737-900 arriving at O'Hare
 - **Two kinds of "live".** The worker pulls from adsb.fi on a schedule (every 10 s); Realtime pushes from the database to the page the moment a row changes. The page is as fresh as the worker's last run, plus a fraction of a second.
 - **Every hop has its own credentials.** Cron uses a secret from Vault. The worker uses Supabase's secret key, which never leaves Supabase. The browser uses only the publishable key and my Clerk token, and RLS decides what that token can see, on REST and on Realtime alike.
 - **Sending a signal, not the data, keeps it cheap.** One small `airport_updates` message per airport per run tells the page to look again. The 40-odd aircraft rows come only when something changed, and only for the airport that changed.
+
+## Assignment 5: security review
+
+> Run /security-review on the branch, and fix what it finds.
+
+**What it found.** No vulnerabilities. Nothing reached the review's bar: high confidence and a concrete way to exploit it. It checked:
+
+- **The tables' rules:** row-level security and grants on the four new tables.
+- **The follow limit:** the 3-follow trigger can't be bypassed or called through the API.
+- **Realtime:** it only sends to signed-in people allowed by those rules.
+- **The worker:** its `WORKER_SECRET` check with Verify JWT off, and its error messages, which never include a URL, header or key.
+- **Injection:** none in the worker's queries or in its adsb.fi address.
+- **pg_cron, pg_net and Vault:** none of them is reachable through the API.
+- **The browser:** it only ever has the publishable key and the Clerk token.
+- **XSS:** none in the new pages.
+
+**What we fixed.** Nothing: there was nothing to fix.
+
+**What we didn't fix, and why.** One observation fell below the bar. Any signed-in person can read `airport_updates` and `aircraft`, so they can tell that *someone* follows ORD or MRU, though not who. We left it as it is:
+
+- **The data is public:** live air traffic, which anyone can see on adsb.fi itself.
+- **Nothing personal is exposed:** `follows` is protected by its own rules, and no user id, name or email is in those tables.
+- **The fix would cost something:** limiting each person to the airports they follow would add a follow check on every row read and on every Realtime message, for very little protection.
+
+If the app grew and which airports people follow became sensitive, the fix is a select policy on both tables that checks `follows` for the person's own id. Realtime would apply it too, so the page wouldn't need to change.
