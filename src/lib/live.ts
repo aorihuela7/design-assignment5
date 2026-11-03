@@ -10,9 +10,10 @@ import { createSupabaseClient } from "./supabase";
 
 export const MAX_FOLLOWS = 3;
 export const RADIUS_NM = 30;
-// A quiet airport's row is rewritten every 30 s (the worker's heartbeat), plus up to
-// 10 s for the run and some slack: older than this, it's late.
-export const STALE_AFTER_MS = 45_000;
+// A quiet airport's row is rewritten every 30 s (the worker's heartbeat), so with a
+// run every 10 s it reaches about 40 s old; a minute leaves room for a late run.
+// Older than this, it's late (docs/data-flow.md).
+export const STALE_AFTER_MS = 60_000;
 // Two minutes with no check: the worker has stopped, or can't reach adsb.fi.
 export const DOWN_AFTER_MS = 120_000;
 
