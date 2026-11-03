@@ -1,6 +1,6 @@
 # Data model
 
-Three tables in Supabase. The SQL is in [`supabase/migrations/`](../supabase/migrations/).
+Seven tables in Supabase: three for packing lists and four for the Live board ([docs/data-flow.md](data-flow.md)). The SQL is in [`supabase/migrations/`](../supabase/migrations/).
 
 ```mermaid
 erDiagram
@@ -8,6 +8,9 @@ erDiagram
   clerk_user ||--o{ trips : owns
   clerk_user ||--o{ items : owns
   trips ||--o{ items : "holds (deleted with the trip)"
+  clerk_user ||--o{ follows : "follows up to 3 airports"
+  follows }o--o| airport_updates : "airport_code"
+  airport_updates ||--o{ aircraft : "airport_code"
 
   clerk_user {
     text sub "Clerk user id, e.g. user_2abc. Lives in Clerk, not Supabase"
@@ -45,6 +48,47 @@ erDiagram
     boolean is_new "added after a full pack"
     timestamptz created_at "order the items were added in"
   }
+
+  follows {
+    text user_id PK "= sub. Select, insert and delete only"
+    text airport_code PK "3 capital letters, from the curated list"
+    timestamptz created_at
+  }
+
+  airport_updates {
+    text airport_code PK "written by the worker on every check"
+    timestamptz checked_at "the last check"
+    boolean ok "whether it worked"
+    text error "why not: 429, timeout"
+    int aircraft_count
+    int changed "aircraft rows written or deleted; in Realtime"
+  }
+
+  aircraft {
+    text airport_code PK
+    text hex PK "the transponder's address"
+    text callsign "optional"
+    text type "e.g. B744"
+    int altitude_ft "null on the ground"
+    int speed_kt
+    int vertical_rate_fpm
+    numeric distance_nm "from the airport"
+    text status "on_ground, departing, arriving, overflying"
+    timestamptz seen_at
+    smallint missed_runs "deleted at 2"
+    timestamptz updated_at
+  }
+
+  worker_runs {
+    bigint id PK
+    timestamptz started_at "kept 24 hours"
+    int duration_ms
+    int airports
+    int airports_failed
+    int rows_changed
+    boolean ok
+    text error "short, never a secret"
+  }
 ```
 
 ## How each row belongs to one person
@@ -56,3 +100,9 @@ erDiagram
 5. **Signed out:** with no token, the request runs as `anon`, which has no access to any table.
 
 The forecast is never saved: only where a trip is going, and optionally the day it leaves (`departs_on`, a calendar day from 2000 to 2099). The starter trips are made once per person, by `add_starter_trips()`. Because a profile can't be changed or deleted, deleting every trip doesn't bring them back.
+
+## The Live board's tables
+
+- **`follows` is personal,** like trips: `user_id` defaults to the Clerk id, and each person can select, insert and delete only their own. There's no update, because a follow has nothing to edit. A trigger refuses a fourth follow ("You can follow up to 3 airports"), with a lock so two at once can't both get in.
+- **`aircraft`, `airport_updates` and `worker_runs` belong to nobody.** They hold live air traffic, not anyone's data, so they have no `user_id`. Any signed-in person can read them; `anon` gets nothing. Nobody can write them but the worker, which uses the secret key Supabase provides on its own servers.
+- **Realtime** publishes only `airport_updates`, one row per airport. A signed-in person gets its changes because of its select grant and policy.

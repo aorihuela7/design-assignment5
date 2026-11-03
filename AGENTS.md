@@ -49,6 +49,8 @@ Supabase Postgres, migrations in `supabase/migrations/`, diagram in `docs/data-m
 - `items`: `id`, `user_id`, `trip_id` (deleting a trip deletes its items), `name` (1–60 characters, unique per trip ignoring case), `section` (clothes, toiletries, tech, documents or other), `packed`, `is_new` and `created_at` (the order items were added in). The insert and update policies also check that the trip belongs to the same person.
 - `profiles`: `user_id` (primary key) and `starters_added_at`. Select and insert only. `add_starter_trips(starters jsonb)` makes the profile and the starter trips in one transaction, and does nothing if the profile already exists.
 - Trips saved in a browser before accounts (localStorage) are ignored: everyone starts fresh.
+- `follows` (Live board): `user_id`, `airport_code` (3 capital letters, from the curated list) and `created_at`. Select, insert and delete only, each for the person's own rows; at most 3 per person, enforced by a trigger.
+- `aircraft`, `airport_updates` and `worker_runs` (Live board): live air traffic, nobody's data, so no `user_id`. Signed-in people can select them; only the worker writes them, with the secret key. Only `airport_updates` is in the Realtime publication. Details in `docs/data-flow.md` and `docs/data-model.md`.
 
 ## Weather
 Open-Meteo (no key) is called from the browser, not from our server. Decided 23 Oct, step 6, because:
