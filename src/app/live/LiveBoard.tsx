@@ -98,11 +98,7 @@ export function LiveBoard() {
 
   return (
     <Page title="Live board" section="live">
-      <p className="max-w-prose">
-        Live air traffic near the airports you follow, as the aircraft’s own transponders report it.{" "}
-        <strong className="font-semibold">This isn’t flight status:</strong> no schedules, gates or delays, and
-        “arriving” and “departing” are a guess from each aircraft’s height and climb.
-      </p>
+      <p className="max-w-prose">Live positions from aircraft transponders. Not flight schedules.</p>
 
       {live.connection === "reconnecting" && (
         <p className="flex items-start gap-1.5 rounded border border-ink bg-surface p-3 text-ink">

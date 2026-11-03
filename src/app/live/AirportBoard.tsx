@@ -6,13 +6,14 @@ import { FlipText } from "@/components/FlipText";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TextButton } from "@/components/TextLink";
 import type { Airport } from "@/lib/airports";
-import { ago, boardOrder, RADIUS_NM, type AircraftStatus, type AirportState, type LiveAircraft } from "@/lib/live";
+import { ago, boardOrder, RADIUS_NM, STATUS_ORDER, type AircraftStatus, type AirportState, type LiveAircraft } from "@/lib/live";
 
+// What each aircraft is doing, as its transponder reports it.
 const STATUS_WORDS: Record<AircraftStatus, string> = {
-  arriving: "Arriving",
-  departing: "Departing",
+  descending: "Descending",
+  climbing: "Climbing",
   on_ground: "On ground",
-  overflying: "Overflying",
+  level: "Passing over",
 };
 
 // A busy airport has 50 aircraft or more; the board shows the first 12 until asked.
@@ -69,9 +70,9 @@ export function AirportBoard({ airport, state, aircraft, onUnfollow, headingRef 
   );
 }
 
-// "3 arriving · 2 departing · 6 on ground · 29 overflying", in the board's order.
+// "3 descending · 2 climbing · 6 on ground · 29 passing over", in the board's order.
 function counts(rows: LiveAircraft[]) {
-  const parts = (["arriving", "departing", "on_ground", "overflying"] as const)
+  const parts = STATUS_ORDER
     .map((status) => [status, rows.filter((row) => row.status === status).length] as const)
     .filter(([, n]) => n > 0)
     .map(([status, n]) => `${n} ${STATUS_WORDS[status].toLowerCase()}`);

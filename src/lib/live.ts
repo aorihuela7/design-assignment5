@@ -17,7 +17,7 @@ export const STALE_AFTER_MS = 60_000;
 // Two minutes with no check: the worker has stopped, or can't reach adsb.fi.
 export const DOWN_AFTER_MS = 120_000;
 
-export type AircraftStatus = "on_ground" | "departing" | "arriving" | "overflying";
+export type AircraftStatus = "on_ground" | "climbing" | "descending" | "level";
 
 export type LiveAircraft = {
   hex: string;
@@ -26,6 +26,8 @@ export type LiveAircraft = {
   altitude_ft: number | null;
   speed_kt: number | null;
   distance_nm: number;
+  bearing_deg: number | null;
+  track_deg: number | null;
   status: AircraftStatus;
 };
 
@@ -53,7 +55,7 @@ export type LiveBoardState = {
   clockOffsetMs: number;
 };
 
-const AIRCRAFT_COLUMNS = "hex, callsign, type, altitude_ft, speed_kt, distance_nm, status";
+const AIRCRAFT_COLUMNS = "hex, callsign, type, altitude_ft, speed_kt, distance_nm, bearing_deg, track_deg, status";
 const CHECK_COLUMNS = "airport_code, checked_at, ok, error, aircraft_count, changed";
 
 // Development only: add ?live=stale or ?live=down to the page's address to see an
@@ -83,10 +85,11 @@ export function airportState(check: AirportCheck | undefined, serverNowMs: numbe
   return check.aircraft_count === 0 ? { kind: "empty", ageMs } : { kind: "fresh", ageMs };
 }
 
-// Arriving and departing first, then on the ground, then overflying; nearest first.
-const ORDER: AircraftStatus[] = ["arriving", "departing", "on_ground", "overflying"];
+// Descending and climbing first (on their way in or out), then on the ground, then
+// passing over; nearest first.
+export const STATUS_ORDER: AircraftStatus[] = ["descending", "climbing", "on_ground", "level"];
 export function boardOrder(aircraft: LiveAircraft[]) {
-  return [...aircraft].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || a.distance_nm - b.distance_nm);
+  return [...aircraft].sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || a.distance_nm - b.distance_nm);
 }
 
 // One client per signed-in person, kept while the tab is open, like the trips' own.
