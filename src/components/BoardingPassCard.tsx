@@ -46,7 +46,8 @@ const TAKEOFF_MS = 200;
 // Half-circle notches: a circle in the page color with two border sides colored,
 // rotated 45° so the colored half faces into the card. Sides swap at @md, when the
 // tear line turns vertical.
-const notch = "absolute size-5 rotate-45 rounded-full border border-transparent bg-canvas";
+// --notch: the color behind the ticket, if it isn't the page (the sign-in panel's navy).
+const notch = "absolute size-5 rotate-45 rounded-full border border-transparent bg-[var(--notch,var(--color-canvas))]";
 const notchStart =
   "-left-px top-0 -translate-x-1/2 -translate-y-1/2 border-t-current border-r-current @md:left-0 @md:-top-px @md:border-t-transparent @md:border-b-current";
 const notchEnd =
@@ -285,9 +286,10 @@ export function BoardingPassSkeleton() {
 // New trip's live preview: the ticket the trip will get, code included, updating as
 // the name is typed. Decorative (the field holds the name), so hidden from screen
 // readers. Once named on Create trip, its title morphs into the new page's title.
-type BoardingPassPreviewProps = { name: string; code: string; titleTransition?: string };
+// The sign-in panel's sample pass shows a list partly packed.
+type BoardingPassPreviewProps = { name: string; code: string; titleTransition?: string; packed?: number; total?: number };
 
-export function BoardingPassPreview({ name, code, titleTransition }: BoardingPassPreviewProps) {
+export function BoardingPassPreview({ name, code, titleTransition, packed = 0, total = 0 }: BoardingPassPreviewProps) {
   const title = name ? (
     <p className={nameClass}>{name}</p>
   ) : (
@@ -316,7 +318,7 @@ export function BoardingPassPreview({ name, code, titleTransition }: BoardingPas
             )}
           </>
         }
-        stub={<RunwayProgress packed={0} total={0} />}
+        stub={<RunwayProgress packed={packed} total={total} />}
       />
     </div>
   );

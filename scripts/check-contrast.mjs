@@ -45,7 +45,7 @@ const pairs = [
   ["Text", "muted", "surface", TEXT, "Code label, a card's destination, Weather unavailable, Last packed, placeholder, packed (struck) items, Remove, 5 places found"],
   ["Text", "ink", "stub", TEXT, "Boarding pass stub: count, Open, status stamp, Departs in 3 days"],
   ["Text", "muted", "stub", TEXT, "Boarding pass stub: Last packed"],
-  ["Text", "amber", "board", TEXT, "Header: PACK AGAIN, Sign in and Sign up links, Trip options, a trip's departure; forecast board: days, weather, temperatures, rain"],
+  ["Text", "amber", "board", TEXT, "Header: PACK AGAIN, Sign in and Sign up links; the sign-in panel's name and line; Trip options, a trip's departure; forecast board: days, weather, temperatures, rain"],
   ["Text", "board", "amber", TEXT, "Header links and Trip options, pressed"],
   ["Text", "white", "accent", TEXT, "Primary button"],
   ["Text", "white", "accent-hover", TEXT, "Primary button, hover"],
