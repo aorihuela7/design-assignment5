@@ -95,6 +95,12 @@ flowchart LR
   CLERK -->|"session token on every request and on Realtime"| PAGE
 ```
 
+## Live board
+
+A second tab, **Live board**, shows live air traffic near up to 3 airports you follow, as departures boards, from [adsb.fi](https://adsb.fi). It isn't flight status, and the page says so. A worker on Supabase checks the followed airports every 10 seconds, and Realtime updates the page. Screenshots of every state are in [docs/live-board/](docs/live-board/).
+
+**Changing the worker:** the worker runs on Supabase, not Vercel, so pushing to GitHub doesn't update it. After any change in `supabase/functions/worker/` (`index.ts`, `logic.ts` or `airports.ts`), run `npm run test:worker`, then redeploy the function to Supabase (the `worker` function, with Verify JWT off, since it checks `WORKER_SECRET` itself). Until then, the old version keeps running.
+
 ## Run it locally
 
 You need Node.js 20.9 or newer, a Clerk application and a Supabase project, both on free plans.
