@@ -438,3 +438,18 @@ Rename and Delete moved into a Trip options menu beside the title.
 - **Names that assume a light page break.** The focus ring was the band's navy, which would vanish on a dark page; it's ink now, a near-identical navy in the light theme and light at night. Delete trip's solid ink button had white text, which at night would be white on light; it takes the card's color instead. Clerk's Continue keeps white explicitly, since it sits on the accent.
 - **A check that reads one theme can't check two.** The contrast script collected every `--color-` value into one list, so dark overrides with the same names would have silently replaced the light ones. It now reads the light tokens and the dark overrides separately and runs every pair for each. All 24 required pairs pass in both; the lowest is white on the accent, 5.76:1 in both.
 - **Screens in dark, the same way as in light.** The screenshot script's browser takes `colorScheme: "dark"`, so `after-dark/` repeats every screen from the same starting point.
+
+## Assignment 4 feedback
+
+My professor's feedback on Assignment 4, fixed on the `assignment-5` branch before the live board. Screenshots of each fix, at 390 px and 1440 px, are in `docs/feedback/`.
+
+### Fix 1: the sign-in and sign-up pages
+
+**What my professor said.** The form takes less than a third of the screen and is neither centered nor left-aligned, so its placement feels random.
+
+**What changed.** Both pages now use one shared layout, `AuthLayout`, on the same grid as every page (the same width and side padding as the band above). On a wide screen it's two columns: a navy panel with the app's name, one line on what it does and a sample boarding pass, and Clerk's form centered in the other column. On a phone it's one column: the panel on top, without the sample pass, so the form stays near the top. Clerk's title said "Sign in to My Application", the name of the Clerk app this repo shares with Assignment 4; it's set to "Sign in to Pack Again" in our code instead, so Assignment 4 is untouched.
+
+**What I learned.**
+
+- **Placement has to come from a grid, not from the component.** Clerk's card has its own fixed width, so dropped into a page it sat wherever it landed. Giving it a column of its own and centering it there makes the position a decision.
+- **A ticket's notches assume the page behind it.** The pass's half-circle notches were drawn in the page color, so on the navy panel they showed as light dots. They now take `--notch`, which the panel sets to navy.
