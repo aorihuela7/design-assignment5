@@ -11,7 +11,7 @@ import { LoadFailed } from "@/components/LoadFailed";
 import { Page } from "@/components/Page";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TextButton } from "@/components/TextLink";
-import { tripCodes } from "@/lib/codes";
+import { nearestAirport } from "@/lib/airports";
 import { departureLine, formatCalendarDay, formatDay, localDay } from "@/lib/dates";
 import { setFlash } from "@/lib/flash";
 import { prefersReducedMotion } from "@/lib/motion";
@@ -386,12 +386,11 @@ export function PackingList({ params }: { params: Promise<{ id: string }> }) {
   const rows = hiddenIds ? allRows.filter((item) => !hiddenIds.has(item.id)) : allRows;
 
   return (
-    // Codes come from all trips in storage order, as on My trips, so they match the card.
     <Page
       title={trip.name}
       back={BACK_TO_MY_TRIPS}
       wide
-      code={tripCodes(storage.trips).get(trip.id)}
+      airport={nearestAirport(trip.destination)}
       titleTransition={tripTitleTransition(trip.id)}
       // Only after mount: "in 7 days" depends on today, on the person's calendar.
       detail={trip.departsOn && now !== null ? departureLine(trip.departsOn, now) : undefined}

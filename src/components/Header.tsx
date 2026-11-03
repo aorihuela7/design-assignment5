@@ -1,6 +1,7 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { ViewTransition, type ReactNode } from "react";
+import type { Airport } from "@/lib/airports";
 import { FlipCode } from "./FlipCode";
 
 export const PAGE_TITLE_ID = "page-title";
@@ -12,8 +13,8 @@ type HeaderProps = {
   isHome?: boolean;
   // While the page's own name is loading: a blank bar on screen, the title for screen readers.
   titleLoading?: boolean;
-  // A trip's 3-letter code, as on its card, so the page reads as the same ticket. Decorative.
-  code?: string;
+  // A trip's nearest airport, its code as on its card, so the page reads as the same ticket.
+  airport?: Airport | null;
   // Shared with the trip's card title, which morphs into this one on opening.
   titleTransition?: string;
   // Pages for signed-out visitors offer Sign in and Sign up; the rest, the account menu.
@@ -34,7 +35,7 @@ export function Header({
   title,
   isHome = false,
   titleLoading = false,
-  code,
+  airport,
   titleTransition,
   signedOut = false,
   wide = false,
@@ -49,7 +50,14 @@ export function Header({
             Pack Again
           </Link>
           <div className="ml-auto flex items-center gap-4">
-            {code && <FlipCode code={code} />}
+            {airport && (
+              <span>
+                <FlipCode code={airport.code} />
+                <span className="sr-only">
+                  Nearest airport: {airport.name} ({airport.code})
+                </span>
+              </span>
+            )}
             {signedOut ? (
               <>
                 <Link href="/sign-in" className={`${bandLink} underline hover:decoration-2`}>

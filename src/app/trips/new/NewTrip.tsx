@@ -10,12 +10,8 @@ import { TextField } from "@/components/Field";
 import { LoadFailed } from "@/components/LoadFailed";
 import { Page } from "@/components/Page";
 import { tripNameMessage } from "@/components/tripNameMessage";
-import { tripCodes } from "@/lib/codes";
 import { createId, createTrip, useStorage } from "@/lib/storage";
 import { cleanName, tripNameProblem, tripTitleTransition } from "@/lib/trips";
-
-// Stands in for the new trip's id when working out its code; no saved trip has it.
-const PREVIEW_ID = "new-trip-preview";
 
 export function NewTrip() {
   const router = useRouter();
@@ -46,11 +42,7 @@ export function NewTrip() {
   // doesn't clash with itself.
   const trips = (storage.status === "ready" ? storage.trips : []).filter((trip) => trip.id !== createdId);
   const nameProblem = attempted ? tripNameProblem(name, trips) : null;
-  // The code it will get: worked out with the trip added last, as it will be saved.
   const previewName = cleanName(name);
-  const previewCode = previewName
-    ? (tripCodes([...trips, { id: PREVIEW_ID, name: previewName, destination: null }]).get(PREVIEW_ID) ?? "")
-    : "";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,7 +104,6 @@ export function NewTrip() {
           </p>
           <BoardingPassPreview
             name={previewName}
-            code={previewCode}
             titleTransition={createdId ? tripTitleTransition(createdId) : undefined}
           />
         </div>

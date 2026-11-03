@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AIRPORTS } from "@/lib/airports";
 import { BoardingPassPreview } from "./BoardingPassCard";
 import { Page } from "./Page";
 
@@ -19,7 +20,7 @@ export function AuthLayout({ title, children }: AuthLayoutProps) {
           <p className="font-display text-3xl font-semibold uppercase tracking-wide lg:text-4xl">Pack Again</p>
           <p>Packing lists for trips you repeat: make one once, tick it off, and it’s ready next time.</p>
           <div className="mt-2 hidden lg:block">
-            <BoardingPassPreview name="Beach weekend" code="AGP" packed={6} total={9} />
+            <BoardingPassPreview name="Beach weekend" airport={AIRPORTS.find((airport) => airport.code === "AGP")} packed={6} total={9} />
           </div>
         </section>
         <div className="flex items-center justify-center">{children}</div>

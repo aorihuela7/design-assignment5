@@ -1,4 +1,5 @@
 import { ViewTransition, type ReactNode } from "react";
+import type { Airport } from "@/lib/airports";
 import { BackLink } from "./BackLink";
 import { Header } from "./Header";
 
@@ -8,8 +9,8 @@ type PageProps = {
   back?: { href: string; label: string };
   // The title isn't known yet (a trip's name is still loading).
   titleLoading?: boolean;
-  // A trip's code, shown on the board like on its card.
-  code?: string;
+  // A trip's nearest airport, its code shown on the board like on its card.
+  airport?: Airport | null;
   // A trip's page: its title morphs from the card that opened it.
   titleTransition?: string;
   // The landing, sign-in and sign-up pages: Sign in and Sign up instead of the account menu.
@@ -27,7 +28,7 @@ export function Page({
   title,
   back,
   titleLoading = false,
-  code,
+  airport,
   titleTransition,
   signedOut,
   wide = false,
@@ -42,7 +43,7 @@ export function Page({
         title={title}
         isHome={!back}
         titleLoading={titleLoading}
-        code={code}
+        airport={airport}
         titleTransition={titleTransition}
         signedOut={signedOut}
         wide={wide}
