@@ -6,6 +6,7 @@ import { FlipText } from "@/components/FlipText";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TextButton } from "@/components/TextLink";
 import type { Airport } from "@/lib/airports";
+import { Radar } from "./Radar";
 import { ago, boardOrder, RADIUS_NM, STATUS_ORDER, type AircraftStatus, type AirportState, type LiveAircraft } from "@/lib/live";
 
 // What each aircraft is doing, as its transponder reports it.
@@ -53,7 +54,11 @@ export function AirportBoard({ airport, state, aircraft, onUnfollow, headingRef 
       {unfollowFailed && <ErrorMessage role="alert">Not saved. Check your connection and try again</ErrorMessage>}
       <Freshness code={airport.code} state={state} />
       {state.kind !== "waiting" && (
-        <Board caption={counts(rows)} empty={rows.length === 0}>
+        <Board
+          caption={counts(rows)}
+          empty={rows.length === 0}
+          radar={rows.length > 0 ? <Radar code={airport.code} aircraft={rows} /> : null}
+        >
           {shown.map((row) => (
             <AircraftRow key={row.hex} row={row} />
           ))}
@@ -104,9 +109,13 @@ const number = "text-right whitespace-nowrap";
 
 // Navy and amber, like the band and the weather board. A table: a caption with the
 // counts, column headings, and each aircraft as its row's heading.
-function Board({ caption, empty, children }: { caption: string; empty: boolean; children: React.ReactNode }) {
+// The radar, when there's anything to place, sits above the table.
+type BoardProps = { caption: string; empty: boolean; radar: React.ReactNode; children: React.ReactNode };
+
+function Board({ caption, empty, radar, children }: BoardProps) {
   return (
     <div data-surface="board" className="@container rounded bg-board">
+      {radar && <div className="border-b border-white/15 px-3 pt-4 pb-3 @md:px-5">{radar}</div>}
       <div className="px-3 pb-1 @md:px-5">
         <table className="w-full font-mono text-xs uppercase tracking-normal text-amber @md:text-sm @md:tracking-wider">
           <caption className="pt-3 pb-1 text-left text-xs text-white">{caption}</caption>
