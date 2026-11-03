@@ -428,7 +428,14 @@ export function PackingList({ params }: { params: Promise<{ id: string }> }) {
         {/* Scrolls inside itself if it's taller than the window; the padding keeps focus
             rings clear of its edges. */}
         <div className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:-m-1 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:p-1">
-          <Weather ref={weather} trip={trip} forecast={forecast} onSetDestination={saveDestination} onAdd={add} />
+          <Weather
+            ref={weather}
+            trip={trip}
+            forecast={forecast}
+            onSetDestination={saveDestination}
+            onAdd={add}
+            onAddDates={() => setOptions("departure")}
+          />
         </div>
 
         <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-1">
